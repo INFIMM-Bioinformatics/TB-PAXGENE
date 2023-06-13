@@ -1,1 +1,9 @@
+.nextflow*
+
 data/fastq
+data/nextflow_outputdir
+data/nextflow_wd
+.Rproj.user
+
+*.sh.e*
+*.sh.o*
