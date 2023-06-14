@@ -5,12 +5,12 @@ nextflow run nf-core/rnaseq \
     -revision 3.12.0 \
     -profile singularity \
     -w data/nextflow_wd \
-    --fasta /home/projects/cu_10181/data/_reference/macaca_fascicularis/GCF_012559485.2_MFA1912RKSv2_genomic.fna.gz \
-    --gtf /home/projects/cu_10181/data/_reference/macaca_fascicularis/GCF_012559485.2_MFA1912RKSv2_genomic.gtf.gz \
+    --fasta /home/projects/cu_10181/data/_reference/macaca_fascicularis/Macaca_fascicularis.Macaca_fascicularis_6.0.dna_rm.toplevel.fa.gz \
+    --gtf /home/projects/cu_10181/data/_reference/macaca_fascicularis/Macaca_fascicularis.Macaca_fascicularis_6.0.109.gtf.gz \
     --input data/nextflow_input.csv \
     --outdir data/nextflow_outputdir \
     --max_cpus 40 \
-    --max_memory 170GB \
+    --max_memory 170GB \ 
     -resume
 
 # qsub -W group_list=ku_00216 -A ku_00216 -l nodes=1:thinnode:ppn=40,mem=175gb,walltime=120:00:00 /home/projects/cu_10181/people/tuhu/PAXgene/analysis/0_RNA_SEQ_MAPPING.sh
