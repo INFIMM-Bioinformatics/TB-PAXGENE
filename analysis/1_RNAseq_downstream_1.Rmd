@@ -1,0 +1,163 @@
+---
+title: "RNAseq downstream analysis (1)"
+author: "Tu Hu"
+date: "2023-06-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load package
+```{r}
+library(dplyr)
+library(stringr)
+library(tidybulk)
+library(tidySummarizedExperiment)
+library(biomaRt)
+library(ggplot2)
+library(ggpubr)
+```
+
+## Load data
+```{r data}
+se <- readRDS("../data/nextflow_outputdir/star_salmon/salmon.merged.gene_counts.rds")
+```
+
+
+### meta data
+```{r generate metadata}
+metadata <-
+  tibble(sample_name = colnames(se)) %>% 
+  mutate(animal = sample_name %>% str_extract("[:alnum:]{1,6}"),
+         sample_date =  sample_name %>% str_extract("[:digit:]{4}\\.[:digit:]{2}\\.[:digit:]{2}"),
+         vacc = case_when(
+           animal %in% c("CFL098", "CGB091", "CGB093", "CGB097", "CGB104") ~ "H107_CAF04_CpG",
+           animal %in% c("CFL069", "CGA054", "CGB065", "CGB088", "CGC010") ~ "H107_CAF09c"
+         ),
+         timepoint = case_when(
+           sample_date == "2019.06.24" ~ "pre", # pre-immunization
+           sample_date == "2019.06.25" ~ "immu1", # day 1 after immunization 1
+           sample_date == "2019.07.23" ~ "immu2" # day 1 after immunization 2
+         ),
+         timepoint = factor(timepoint, levels = c("pre", "immu1", "immu2")))
+col_data <- 
+  metadata %>% tibble::column_to_rownames("sample_name") %>% 
+  DataFrame()
+colData(se) <- col_data
+```
+
+### gene data
+```{r clean rowdata}
+ensembl <- useEnsembl(biomart = "genes", dataset = "mfascicularis_gene_ensembl")
+gene_data <- getBM(attributes = c("ensembl_gene_id", "description", "gene_biotype"), 
+                   mart = ensembl)
+gene_data_Type <- 
+  rowData(se) %>% as_tibble(rownames = "rowname") %>% 
+  left_join(gene_data, by = c("gene_id" = "ensembl_gene_id"))
+
+rowData(se) <- gene_data_Type %>% tibble::column_to_rownames() %>% DataFrame()
+```
+
+```{r generate se_pcoding}
+se_pcoding <- se[rowData(se)$gene_biotype == "protein_coding", ] # protein coding gene
+
+```
+
+
+# PCA plot
+```{r detect abundant and scale counts}
+se_pcoding_scale_abundant <- 
+  se_pcoding %>% 
+  identify_abundant() %>% 
+  scale_abundance()
+```
+
+```{r pca}
+pca <- se_pcoding_scale_abundant %>% reduce_dimensions(method = "PCA")
+
+pca %>% pivot_sample() %>% 
+  ggscatter(x = "PC1", y = "PC2", label = ".sample", )
+
+```
+
+```{r}
+se_pcoding_scale_abundant_filtS <- 
+  se_pcoding_scale_abundant[, !colnames(se) %in% c("CGB097.2019.06.24", "CGB065.2019.06.24")]
+
+pca_filtS <- se_pcoding_scale_abundant_filtS %>% reduce_dimensions(method = "PCA")
+
+pca_filtS %>% pivot_sample() %>% 
+  ggscatter(x = "PC1", y = "PC2", label = ".sample")
+
+pca_filtS %>% pivot_sample() %>% 
+  ggscatter(x = "PC1", y = "PC2", 
+            color = "timepoint", shape = "vacc",
+            ellipse = T, mean.point = T)
+```
+
+# DE analysis
+
+## Compare after- (1st) and pre- immune effect
+
+```{r immu1 vs pre (paired)}
+# DE_after_vs_pre <- 
+#   se_pcoding_scale_abundant_filtS %>% 
+#   test_differential_abundance(~ vacc + timepoint, 
+#                               action = "get",
+#                               method = "DESeq2")
+library(DESeq2)
+
+
+
+
+
+
+
+resultsNames(dds)
+
+vacc_H107_CAF09c <- 
+  se_pcoding_scale_abundant_filtS[, se_pcoding_scale_abundant_filtS$vacc == "H107_CAF09c"]
+
+rownames(vacc_H107_CAF09c) <- rowData(vacc_H107_CAF09c)$gene_name
+
+count <- 
+  vacc_H107_CAF09c %>% assay(1) %>% 
+  as_matrix() %>% 
+  round()
+
+dds <- DESeqDataSetFromMatrix(
+  count, 
+  colData = colData(vacc_H107_CAF09c),
+  design = ~ animal + timepoint)
+
+dds <- DESeq(dds)
+
+resLFC <- lfcShrink(dds, coef = "timepoint_immu1_vs_pre", type = "apeglm")
+
+
+```
+
+```{r}
+sig <- 
+resLFC %>% as_tibble(rownames = "gene_name") %>% 
+  filter(abs(log2FoldChange) > 1, padj < .05) %>% 
+  arrange(-log2FoldChange)
+
+vacc_H107_CAF09c_sig <- 
+  vacc_H107_CAF09c[sig %>% slice_head(n = 9) %>% pull(gene_name), ]
+
+ggboxplot(vacc_H107_CAF09c_sig %>% as_tibble(), 
+          x = "timepoint",
+          y = "counts_scaled", 
+          facet.by = ".feature", 
+          yscale = "log2",
+          color = "timepoint",
+          add = "jitter")
+```
+
+```{r}
+
+```
+
