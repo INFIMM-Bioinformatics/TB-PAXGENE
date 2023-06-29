@@ -50,7 +50,8 @@ colData(se) <- col_data
 
 ### gene data
 ```{r clean rowdata}
-ensembl <- useEnsembl(biomart = "genes", dataset = "mfascicularis_gene_ensembl")
+ensembl <- useEnsembl(biomart = "genes", 
+                      dataset = "mfascicularis_gene_ensembl", mirror = "useast")
 gene_data <- getBM(attributes = c("ensembl_gene_id", "description", "gene_biotype"), 
                    mart = ensembl)
 gene_data_Type <- 
@@ -92,72 +93,381 @@ pca_filtS %>% pivot_sample() %>%
   ggscatter(x = "PC1", y = "PC2", label = ".sample")
 
 pca_filtS %>% pivot_sample() %>% 
+  mutate(timepoint_vacc = paste(timepoint, vacc)) %>% 
   ggscatter(x = "PC1", y = "PC2", 
             color = "timepoint", shape = "vacc",
-            ellipse = T, mean.point = T)
+            ellipse = T,
+            mean.point = T)
 ```
 
 # DE analysis
 
-## Compare after- (1st) and pre- immune effect
+## Compare after- and pre- immune effect within each vacc
 
-```{r immu1 vs pre (paired)}
-# DE_after_vs_pre <- 
-#   se_pcoding_scale_abundant_filtS %>% 
-#   test_differential_abundance(~ vacc + timepoint, 
-#                               action = "get",
-#                               method = "DESeq2")
+```{r post-immu vs pre (paired)}
+
 library(DESeq2)
 
+vacc_l <- se_pcoding_scale_abundant_filtS$vacc %>% unique()
+
+DGE_immu_vs_pre <- 
+  lapply(vacc_l,
+         function(vacc){
+    se <-   
+      se_pcoding_scale_abundant_filtS[rowData(se_pcoding_scale_abundant_filtS)$.abundant == TRUE,se_pcoding_scale_abundant_filtS$vacc == vacc]
+    rownames(se) <- rowData(se)$gene_name
+    
+    count <- se %>% assay(1) %>% 
+      as_matrix() %>% 
+      round()
+    
+    dds <- 
+      DESeqDataSetFromMatrix(
+        count, 
+        colData = colData(se),
+        design = ~ animal + timepoint
+        )
+  
+    dds <- DESeq(dds, parallel = F)
+  
+    immu1_vs_pre <- 
+      lfcShrink(dds, 
+                coef = "timepoint_immu1_vs_pre", 
+                type = "apeglm", 
+                parallel = F)
+    
+    immu2_vs_pre <- 
+      lfcShrink(dds, 
+                coef = "timepoint_immu2_vs_pre", 
+                type = "apeglm", 
+                parallel = F)
+    
+    DGE_immu_vs_pre <- 
+      list("immu1_vs_pre" = immu1_vs_pre, 
+           "immu2_vs_pre" = immu2_vs_pre)
+    
+    return(DGE_immu_vs_pre)
+  })
+
+names(DGE_immu_vs_pre) <- vacc_l
+```
 
 
 
 
 
+```{r volcano plot and DE list write}
+library(EnhancedVolcano)
 
+mapply(function(vacc, contrast){
+  res <- DGE_immu_vs_pre[[vacc]][[contrast]] %>% 
+    as_tibble(rownames = "gene_name") %>% 
+    filter(!gene_name %>% str_detect("ENSMFAG"))
+  
+  volcano <- 
+    EnhancedVolcano(
+      res,
+      lab = res$gene_name,
+      x = "log2FoldChange",
+      y = "pvalue",
+      title = vacc,
+      subtitle = contrast
+      )
+  
+  res_filt <- 
+    res %>% filter(abs(log2FoldChange) > 1,
+                   padj < .05) %>% 
+    arrange(-log2FoldChange) %>% 
+    left_join(gene_data_Type %>% 
+                dplyr::select(gene_name, description))
+    
+  res_filt %>% readr::write_csv(
+    paste0("../data/DElist/", 
+           paste0("DE_", vacc, "_",contrast, ".csv"))
+    )
+  
+  ggsave(paste0("../data/figure/", 
+                paste0("vocalno_", vacc, "_",contrast, ".jpg")),
+         volcano, width = 8, height = 8, dpi = 600)
+  
+  
+}, 
+  rep(vacc_l, 2), 
+  c(rep("immu1_vs_pre", 2), rep("immu2_vs_pre", 2))
+)
+```
+
+
+## CAF04 immune 1 vs immune 2
+```{r}
+fun_extract_de_up <- 
+  function(vacc, contrast){
+    
+    res <- DGE_immu_vs_pre[[vacc]][[contrast]] %>% 
+      as_tibble(rownames = "gene_name") %>% 
+      filter(!gene_name %>% str_detect("ENSMFAG"))
+    
+    res_filt <- 
+      res %>% filter(log2FoldChange > 1,
+                     padj < .05) %>% 
+      arrange(-log2FoldChange) %>% 
+      left_join(gene_data_Type %>% 
+                  dplyr::select(gene_name, description),
+                by = "gene_name")
+    
+    g_name <- res_filt %>% pull(gene_name)
+    return(g_name)
+    } 
+
+CAF09_immu1 <- fun_extract_de_up("H107_CAF09c", "immu1_vs_pre")
+CAF09_immu2 <- fun_extract_de_up("H107_CAF09c", "immu2_vs_pre")
+library(ggvenn)
+list(`CAF09 immu1 vs. pre` = CAF09_immu1, 
+     `CAF09 immu2 vs. pre` = CAF09_immu2) %>% 
+  ggvenn()
+
+```
+
+```{r}
+CAF04_immu1 <- fun_extract_de_up("H107_CAF04_CpG", "immu1_vs_pre")
+CAF04_immu2 <- fun_extract_de_up("H107_CAF04_CpG", "immu2_vs_pre")
+list(`CAF04 immu1 vs. pre` = CAF04_immu1, 
+     `CAF04 immu2 vs. pre` = CAF04_immu2) %>% 
+  ggvenn()
+```
+
+
+## CAF09 vs CAF04CpG
+```{r CAF09 vs CAF04CpG}
+
+immu1_caf09_caf04CpG <- 
+  list(CAF09 = CAF09_immu1,
+       CAF04_CpG = CAF04_immu1) %>% 
+  ggvenn() +
+  ggtitle("Up-regulated genes - after first immunization")
+
+immu1_caf09_caf04CpG
+```
+
+```{r}
+library(enrichR)
+
+# library(gprofiler2)
+# convert <- 
+# gprofiler2::gorth(CAF09_immu1, 
+#                   source_organism = "mfascicularis", 
+#                   target_organism = "hsapiens")
+# mean(convert$input == convert$ortholog_name) # 99.87%
+
+enrichment <- 
+  enrichr(CAF09_immu1[CAF09_immu1 %in% CAF04_immu1], 
+          databases = "GO_Biological_Process_2023") # overlap 304
+
+enrichment[[1]] %>% 
+  as_tibble() %>% 
+  arrange(-Combined.Score)
+
+enrichment <- 
+  enrichr(CAF09_immu1[!CAF09_immu1 %in% CAF04_immu1], 
+          databases = "GO_Biological_Process_2023") # overlap 304
+
+enrichment[[1]] %>% 
+  as_tibble() %>% 
+  arrange(-Combined.Score)
+
+enrichment <- 
+  enrichr(CAF04_immu1[!CAF04_immu1 %in% CAF09_immu1], 
+          databases = "GO_Molecular_Function_2023") # overlap 304
+
+enrichment[[1]] %>% 
+  as_tibble() %>% 
+  arrange(-Combined.Score)
+
+
+```
+
+
+### Compare between vacc
+
+```{r}
+se_vacc_effect_first <- 
+  se_pcoding_scale_abundant_filtS[rowData(se_pcoding_scale_abundant_filtS)$.abundant == TRUE, se_pcoding_scale_abundant_filtS$timepoint == "immu1"]
+
+rownames(se_vacc_effect_first) <- rowData(se_vacc_effect_first)$gene_name
+    
+count <- se_vacc_effect_first %>% assay(1) %>% as_matrix() %>% round()
+    
+dds <- 
+  DESeqDataSetFromMatrix(
+    count, 
+    colData = colData(se_vacc_effect_first),
+    design = ~ vacc)
+  
+dds <- DESeq(dds, parallel = F)
 resultsNames(dds)
+  
+res_vacc <- 
+      lfcShrink(dds, 
+                coef = "vacc_H107_CAF09c_vs_H107_CAF04_CpG", 
+                type = "apeglm", 
+                parallel = F)
 
-vacc_H107_CAF09c <- 
-  se_pcoding_scale_abundant_filtS[, se_pcoding_scale_abundant_filtS$vacc == "H107_CAF09c"]
+res_vacc %>% as_tibble(rownames = "gene_name") %>% 
+  filter(padj < 0.05, abs(log2FoldChange) > 1)
 
-rownames(vacc_H107_CAF09c) <- rowData(vacc_H107_CAF09c)$gene_name
+EnhancedVolcano(
+  res_vacc,
+  rownames(res_vacc),
+  x = "log2FoldChange",
+  y = "pvalue", 
+  title = "CAF09c vs CAF04 CpG",
+  subtitle = "After the first immunization"
+)
 
-count <- 
-  vacc_H107_CAF09c %>% assay(1) %>% 
-  as_matrix() %>% 
-  round()
+```
 
-dds <- DESeqDataSetFromMatrix(
-  count, 
-  colData = colData(vacc_H107_CAF09c),
-  design = ~ animal + timepoint)
 
-dds <- DESeq(dds)
+## Pathway
 
-resLFC <- lfcShrink(dds, coef = "timepoint_immu1_vs_pre", type = "apeglm")
-
+```{r eval=FALSE}
+DGE_immu_vs_pre[["H107_CAF09c"]][["immu1_vs_pre"]] %>% 
+  as_tibble(rownames = "gene_name") %>% 
+  filter(log2FoldChange > 1, padj < .5, !str_detect(gene_name, "ENSMFAG")) %>% 
+  arrange(-log2FoldChange) %>% 
+  pull(gene_name) %>% 
+  writeLines("../data/_tmp_caf09c_first_immune.gene")
 
 ```
 
 ```{r}
-sig <- 
-resLFC %>% as_tibble(rownames = "gene_name") %>% 
-  filter(abs(log2FoldChange) > 1, padj < .05) %>% 
-  arrange(-log2FoldChange)
+library(progeny)
+library(decoupleR)
 
-vacc_H107_CAF09c_sig <- 
-  vacc_H107_CAF09c[sig %>% slice_head(n = 9) %>% pull(gene_name), ]
+progeny_d <- get_progeny(top = 100)
 
-ggboxplot(vacc_H107_CAF09c_sig %>% as_tibble(), 
-          x = "timepoint",
-          y = "counts_scaled", 
-          facet.by = ".feature", 
-          yscale = "log2",
-          color = "timepoint",
-          add = "jitter")
+count <- log2(assay(se_pcoding_scale_abundant_filtS, 3) + 1) %>% as.matrix()
+rownames(count) <- rowData(se_pcoding_scale_abundant_filtS)$gene_name
+
+sample_acts <- run_wmean(
+  count %>% as.matrix(),
+  net = progeny_d,
+  .mor = "weight"
+)
+
+stat <- 
+  colData(se_pcoding_scale_abundant_filtS) %>% 
+  as_tibble(rownames = "sample_name") %>% 
+  left_join(sample_acts, by = c(sample_name = "condition")) %>% 
+  filter(statistic == "norm_wmean")
+  
+stat %>% 
+  ggplot(aes(x = vacc, y = score, fill = timepoint)) +
+  geom_boxplot() +
+  facet_wrap(~ source)
+
+
+stat %>% 
+  ggboxplot(x = "vacc", y = "score", fill = "timepoint", 
+            facet.by = "source", scales = "free", add = "dotplot") +
+  stat_compare_means()
+
+stat %>% 
+  ggpaired()
+
+```
+
+```{r}
+library(OmnipathR)
+go <- OmnipathR::get_ontology_db(key = "goa_human", child_parents = F)
+
+```
+
+## Pathway - targeted
+
+
+```{r}
+decouple()
+
+
+pathway_data <- 
+  msigdbr::msigdbr(subcategory = "GO:BP")
+
+pathway_data_interferon <- 
+  pathway_data %>% filter(
+    gs_name %in% c("GOBP_RESPONSE_TO_INTERFERON_ALPHA", 
+                   "GOBP_CELLULAR_RESPONSE_TO_INTERFERON_BETA",
+                   "GOBP_CELLULAR_RESPONSE_TO_INTERFERON_GAMMA")
+  ) %>% 
+  rename(source = gs_name,
+         target = gene_symbol) %>% 
+  dplyr::select(source, target) %>% distinct() %>% 
+  mutate(mor = 1) #mode of regulation 
+
+gsva <- 
+  decouple(count, pathway_data_interferon, statistics = "gsva")
+
+gsva_clean <- 
+  colData(se_pcoding_scale_abundant_filtS) %>% 
+  as_tibble(rownames = "sample_name") %>% 
+  left_join(gsva, by = c(sample_name = "condition"))
+
+gsva_clean %>% 
+  ggboxplot(x = "vacc", y = "score", fill = "timepoint", 
+            facet.by = "source", scales = "free", add = "dotplot") +
+  stat_compare_means()
+```
+
+
+```{r}
+gsva_clean %>% 
+  ggboxplot(x = "timepoint", y = "score", fill = "vacc", 
+            facet.by = "source", scales = "free", add = "dotplot") +
+  stat_compare_means()
+```
+
+#### Heatmap
+```{r}
+library(ComplexHeatmap)
+
+
+
+heatmap_g <- 
+  pathway_data_interferon %>% 
+  filter(target %in% c(CAF04_immu1, CAF04_immu2, CAF09_immu1, CAF09_immu2))
+
+heatmap_m <- count[heatmap_g$target, ]
+
+heatmap_m_z <- heatmap_m %>% t() %>% scale() %>% t()
+
+gene_theme <- heatmap_g$source %>% unique %>% str_extract("INTERFERON_(ALPHA|BETA|GAMMA)")
+gene_theme_color <- RColorBrewer::brewer.pal(
+  length(gene_theme), "Accent")
+names(gene_theme_color) <- gene_theme
+
+
+heatmap_annotation <- 
+  HeatmapAnnotation(
+    `vacc` = colData(se_pcoding_scale_abundant_filtS) %>% as_tibble() %>% pull(vacc) %>% str_remove("H107_"),
+    `timepoint` = colData(se_pcoding_scale_abundant_filtS) %>% as_tibble() %>% pull(timepoint)
+  )
+
+heatmap_body <- 
+  Heatmap(heatmap_m_z, 
+          show_column_names = F,
+          top_annotation = heatmap_annotation,
+          column_split = colData(se_pcoding_scale_abundant_filtS) %>% as_tibble() %>% pull(timepoint),
+          row_split = heatmap_g$source,
+          row_title = gt_render(gene_theme),
+          row_title_rot = 0,
+          row_title_side = "right",
+          row_title_gp = gpar(fill = gene_theme_color))
+
+draw(heatmap_body, annotation_legend_side = "top")
 ```
 
 ```{r}
 
 ```
+
+
 
