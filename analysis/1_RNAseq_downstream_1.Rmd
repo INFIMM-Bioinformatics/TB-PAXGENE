@@ -22,9 +22,8 @@ library(ggpubr)
 
 ## Load data
 ```{r data}
-se <- readRDS("../data/nextflow_outputdir/star_salmon/salmon.merged.gene_counts.rds")
+se <- readRDS("../data/salmon.merged.gene_counts.rds")
 ```
-
 
 ### meta data
 ```{r generate metadata}
@@ -62,7 +61,6 @@ rowData(se) <- gene_data_Type %>% tibble::column_to_rownames() %>% DataFrame()
 
 ```{r generate se_pcoding}
 se_pcoding <- se[rowData(se)$gene_biotype == "protein_coding", ] # protein coding gene
-
 ```
 
 
@@ -72,6 +70,9 @@ se_pcoding_scale_abundant <-
   se_pcoding %>% 
   identify_abundant() %>% 
   scale_abundance()
+
+rownames(se_pcoding_scale_abundant) <- 
+  rowData(se_pcoding_scale_abundant)$gene_name
 ```
 
 ```{r pca}
@@ -79,8 +80,8 @@ pca <- se_pcoding_scale_abundant %>% reduce_dimensions(method = "PCA")
 
 pca %>% pivot_sample() %>% 
   ggscatter(x = "PC1", y = "PC2", label = ".sample", )
-
 ```
+
 
 ```{r}
 se_pcoding_scale_abundant_filtS <- 
@@ -108,10 +109,6 @@ pca_filtS %>% pivot_sample() %>%
 #                               action = "get",
 #                               method = "DESeq2")
 library(DESeq2)
-
-
-
-
 
 
 
