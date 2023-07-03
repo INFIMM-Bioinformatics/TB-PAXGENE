@@ -1,0 +1,155 @@
+---
+title: "Vacc vs. Pre pathway enrichment"
+author: "Tu Hu"
+format: html
+editor: visual
+---
+
+## Load packages and data
+
+```{r}
+library(dplyr)
+library(tidybulk)
+library(fgsea)
+library(purrr)
+library(ggplot2)
+```
+
+## DEG list
+
+```{r}
+DEG <- readRDS("../data/DElist/DGE_immu_vs_pre.rds")
+str(DEG, max.level = 2)
+```
+
+## Gene set
+
+```{r}
+gs <- 
+  tibble(gs_name = c("CP:REACTOME", 
+                     "GO:BP", 
+                     "GO:MF")) %>% 
+  mutate(gs_list = purrr::map(gs_name, function(subcat){
+  gs_df <- msigdbr::msigdbr(species = "Homo sapiens", 
+                            subcategory = subcat) %>% 
+    group_by(gs_name) %>% tidyr::nest() %>% 
+    mutate(gene_id = purrr::map(data, ~ .x %>% pull(gene_symbol))) %>% select(-data)
+  gs_list <- gs_df$gene_id
+  names(gs_list) <- gs_df$gs_name
+  return(gs_list)
+}))
+```
+
+## pathway enrichment by fgsea
+
+```{r}
+fgsea_res <- 
+  fgsea(
+    pathways = gs[gs$gs_name == "CP:REACTOME", ]$gs_list[[1]],
+    stats = 
+      DEG$H107_CAF09c$immu1_vs_pre %>% 
+      as_tibble(rownames = "gene_name") %>% 
+      filter(padj < 0.05) %>% 
+      select(gene_name, log2FoldChange) %>% 
+      tibble::deframe()
+  )
+
+fgsea_res %>% filter(
+  padj < 0.05
+) %>% arrange(-NES)
+```
+
+```{r}
+design <- 
+  tidyr::expand_grid(
+    gs_name  = gs$gs_name, 
+    vacc = names(DEG),
+    contrast = c("immu1_vs_pre", "immu2_vs_pre")
+    )
+
+result <- 
+  design %>% 
+  mutate(
+    gs = map(gs_name, function(x){
+      gs <- gs[gs$gs_name == x, ]$gs_list[[1]]
+      return(gs)
+      }),
+    DEG = map2(vacc, contrast, 
+               ~ DEG[[.x]][[.y]] %>% 
+                 as_tibble(rownames = "gene_name") %>% 
+                 filter(padj < 0.05) %>% 
+                 select(gene_name, log2FoldChange) %>% 
+                 tibble::deframe()),
+    pathway_enrichment =
+      map2(gs, DEG, ~ fgsea(pathways = .x, stats = .y) %>% 
+             as_tibble() %>% 
+             filter(padj < 0.05))
+    )
+
+saveRDS(result, "../data/pathway_enrichment/GSEA_enrichment.rds")
+```
+
+* Reference gene set:
+  * CP:REACTOME (Reactome Pathways): 1615 pathways
+  * GO:BP (Gene Ontology Biological Process): 7658 pathways
+  * GO:MF (Gene Ontology Molecular Function): 1738 pathways
+* Pros and Cons:
+  * GO:BP: comprehensive, but a lot of redundancy. For example, the top 10 pathways of H107_CAF09c immu1_vs_pre are:
+  *  [1] "GOBP_DEFENSE_RESPONSE_TO_SYMBIONT"                        "GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS"               
+ [3] "GOBP_TYPE_I_INTERFERON_PRODUCTION"                        "GOBP_RESPONSE_TO_VIRUS"                                  
+ [5] "GOBP_REGULATION_OF_VIRAL_PROCESS"                         "GOBP_RESPONSE_TO_TYPE_I_INTERFERON"                      
+ [7] "GOBP_POSITIVE_REGULATION_OF_TYPE_I_INTERFERON_PRODUCTION" "GOBP_NEGATIVE_REGULATION_OF_VIRAL_GENOME_REPLICATION"    
+ [9] "GOBP_INTERFERON_BETA_PRODUCTION"                          "GOBP_CYTOKINE_MEDIATED_SIGNALING_PATHWAY"                
+* No of enriched pathways:
+  * GO:BP
+    * H107_CAF09c
+      * immu1_vs_pre: 313
+      * immu2_vs_pre: 232
+    * H107_CAF04_CpG
+      * immu1_vs_pre: 68
+      * immu2_vs_pre: 95
+
+```{r Bubble plot}
+pathway_plot <- 
+  c("GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS",
+    "GOBP_TYPE_I_INTERFERON_PRODUCTION",
+    "GOBP_INFLAMMATORY_RESPONSE",
+    "GOBP_TYPE_2_IMMUNE_RESPONSE",
+    "GOBP_INTERLEUKIN_1_PRODUCTION",
+    "GOBP_INTERLEUKIN_6_PRODUCTION",
+    "GOBP_INTERLEUKIN_10_PRODUCTION",
+    "GOBP_INTERLEUKIN_18_MEDIATED_SIGNALING_PATHWAY",
+    "GOBP_INTERLEUKIN_27_MEDIATED_SIGNALING_PATHWAY",
+    "GOBP_B_CELL_ACTIVATION")
+
+result %>% 
+  dplyr::select(gs_name:contrast, pathway_enrichment) %>% unnest() %>% 
+  filter(pathway %in% pathway_plot) %>% 
+  mutate(`-log10 P-value` = -log10(padj)) %>% 
+  ggplot(aes(x = contrast, y = pathway, color = NES, size = `-log10 P-value`)) +
+  geom_point() +
+  facet_grid(~vacc) +
+  # rotate x xaixs labels
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_size_area(max_size = 8) + 
+  scale_color_gradient2(low="blue", mid = "white", high="red") 
+
+```
+
+
+## Leading edge
+
+```{r}
+result$pathway_enrichment[[5]] %>% 
+  filter(pathway == "GOBP_INTERLEUKIN_1_PRODUCTION") %>% 
+  pull(leadingEdge) %>% 
+  unlist() %>% 
+  table %>% 
+  sort(T) %>% 
+  head(25) %>% 
+  names()
+```
+
+
+
+

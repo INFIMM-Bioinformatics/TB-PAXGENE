@@ -1,0 +1,146 @@
+---
+title: "Correlation w. late response"
+author: "Tu Hu"
+format: html
+editor: visual
+---
+
+## Set up
+
+```{r}
+library(dplyr)
+library(SummarizedExperiment)
+#setwd("analysis") # set working directory for compatibility across RStudio and VSCode
+library(GSVA)
+library(tidyr)
+```
+
+
+## Load gene expression data
+
+```{r}
+se <- readr::read_rds("../data/se_pcoding_scale_abundant_filtS.rds")
+head(se)
+```
+
+## Load late response data
+
+```{r}
+late_response <- readxl::read_xlsx("../data/late_response_parameters.xlsx") %>% 
+  mutate(across(contains(c("ELISPOT", "BAL")), as.numeric))
+
+```
+
+```{r}
+late_response_meta <- 
+  se %>% colData() %>% as_tibble(rownames = "sample_name") %>% 
+  left_join(late_response, by = c("animal" = "NHP Name")) %>% 
+  group_by(animal)
+```
+
+
+## Calulate GSVA scores
+
+GSVA scores were calculated for each sample using the gene sets from the Molecular Signatures Database (MSigDB).
+
+```{r prepare count matrix}
+count_matrix <- 
+  se %>% assay(3) %>% as.matrix() # log2-transformed normalized counts
+count_matrix <- log2(count_matrix + 1)
+```
+
+```{r prepare gene set}
+gs <- 
+  tibble(gs_name = c("CP:REACTOME", 
+                     "GO:BP", 
+                     "GO:MF")) %>% 
+  mutate(gs_list = purrr::map(gs_name, function(subcat){
+  gs_df <- msigdbr::msigdbr(species = "Homo sapiens", 
+                            subcategory = subcat) %>% 
+    group_by(gs_name) %>% tidyr::nest() %>% 
+    mutate(gene_id = purrr::map(data, ~ .x %>% pull(gene_symbol))) %>% select(-data)
+  gs_list <- gs_df$gene_id
+  names(gs_list) <- gs_df$gs_name
+  return(gs_list)
+}))
+
+gs_GOBP <- 
+  gs$gs_list[[2]]
+```
+
+```{r}
+pathway_score <- gsva(
+  count_matrix, gs_GOBP
+)
+
+# pathway_score_t <- pathway_score %>% t()
+
+
+pathway_score_selected <- 
+  pathway_score[c("GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS",
+    "GOBP_TYPE_I_INTERFERON_PRODUCTION",
+    "GOBP_INFLAMMATORY_RESPONSE",
+    "GOBP_TYPE_2_IMMUNE_RESPONSE",
+    "GOBP_INTERLEUKIN_1_PRODUCTION",
+    "GOBP_INTERLEUKIN_6_PRODUCTION",
+    "GOBP_INTERLEUKIN_10_PRODUCTION",
+    "GOBP_INTERLEUKIN_18_MEDIATED_SIGNALING_PATHWAY",
+    "GOBP_INTERLEUKIN_27_MEDIATED_SIGNALING_PATHWAY",
+    "GOBP_B_CELL_ACTIVATION"), ] %>% t() %>% 
+  as_tibble(rownames = "sample_name") %>% 
+  mutate(animal = sample_name %>% str_extract("[:alnum:]{6}"),
+         sample_date = sample_name %>% str_extract("[:digit:]{4}\\.[:digit:]{2}\\.[:digit:]{2}")) %>% 
+  left_join(colData(se) %>% as_tibble() %>% select(animal:timepoint),
+            by = c("animal", "sample_date")) %>% 
+  select(!contains("GOBP"), contains("GOBP"))
+
+pathway_score_baseline <- 
+  pathway_score_selected %>% 
+    filter(timepoint == "pre") %>% 
+    select(contains("GOBP"))
+pathway_score_baseline_mean <- colMeans(pathway_score_baseline)
+
+pathway_score_selected_addmissing <- 
+  pathway_score_selected %>% 
+  add_row(sample_name = "CGB097.2019.06.24",
+          animal = "CGB097",
+          sample_data = "2019.06.24")
+
+  left_join(late_response_meta) %>% 
+  group_by(animal) %>% 
+  nest
+  
+  # select(contains(c("sample_name", "GOBP", "IFNg", "IL-17A", "BAL", "Group"))) %>% 
+  # select(-c("Group Order in protocol", "Group Order in manuscript"))
+  
+```
+
+```{r}
+pathway_score_selected_group <- 
+  pathway_score_selected %>% 
+  group_by(Group) %>% 
+  tidyr::nest()
+```
+
+
+## Calculate correlation
+```{r}
+corr <- 
+  pathway_score_selected_group$data[[1]] %>% 
+  tibble::column_to_rownames("sample_name")
+
+library(stringr)
+colnames(corr) <- 
+  corr %>% colnames() %>% 
+  str_remove("GOBP_") %>% 
+  str_replace("INTERLEUKIN_","IL")
+
+library(corrplot)
+
+
+pmat <- cor.mtest(corr)
+corr %>% 
+  cor(use = "complete.obs") %>% 
+  corrplot::corrplot(p.mat = pmat$p, col=colorRampPalette(c("blue","white","red"))(200))
+```
+

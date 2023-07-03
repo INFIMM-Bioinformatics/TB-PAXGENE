@@ -7,3 +7,4 @@ data/nextflow_wd
 
 *.sh.e*
 *.sh.o*
+omnipathr-log/
