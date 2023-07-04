@@ -125,28 +125,78 @@ openxlsx::write.xlsx(gobp_enrichment, file = "../data/pathway_enrichment/GSEA_en
 
 ```{r Bubble plot}
 pathway_plot <- 
-  c("GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS",
-    "GOBP_TYPE_I_INTERFERON_PRODUCTION",
-    "GOBP_INFLAMMATORY_RESPONSE",
-    "GOBP_TYPE_2_IMMUNE_RESPONSE",
-    "GOBP_INTERLEUKIN_1_PRODUCTION",
-    "GOBP_INTERLEUKIN_6_PRODUCTION",
-    "GOBP_INTERLEUKIN_10_PRODUCTION",
-    "GOBP_INTERLEUKIN_18_MEDIATED_SIGNALING_PATHWAY",
-    "GOBP_INTERLEUKIN_27_MEDIATED_SIGNALING_PATHWAY",
-    "GOBP_B_CELL_ACTIVATION")
+  tibble(
+  pathway = c("GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS",
+              "GOBP_INFLAMMATORY_RESPONSE",
+              "GOBP_TYPE_2_IMMUNE_RESPONSE",
+              "GOBP_CYTOKINE_PRODUCTION",
+              "GOBP_NIK_NF_KAPPAB_SIGNALING"),
+  pathway_show = c("Negative regulation of viral process", "Inflammatory response",
+                   "Type 2 immune response", "Cytokine production", "NF-kB signaling pathway by NIK kinase"),
+  theme = "Immune"
+) %>% 
+  bind_rows(
+    tibble(
+      pathway = c("GOBP_TYPE_I_INTERFERON_PRODUCTION", "GOBP_RESPONSE_TO_TYPE_I_INTERFERON"),
+      pathway_show = c("Type-I INF production", "Response to Type-I INF"),
+      theme = "Type-I INF"
+    )
+  ) %>% 
+  bind_rows(
+    tibble(
+      pathway = c("GOBP_TUMOR_NECROSIS_FACTOR_SUPERFAMILY_CYTOKINE_PRODUCTION",
+                  "GOBP_MACROPHAGE_ACTIVATION"),
+      pathway_show = c("TNF superfamily cytokine production", "Activation of macrophage"),
+      theme = "TNF"
+    )
+  ) %>% 
+  bind_rows(
+    tibble(
+      pathway = c("GOBP_INTERLEUKIN_1_PRODUCTION",
+                  "GOBP_INTERLEUKIN_6_PRODUCTION",
+                  "GOBP_INTERLEUKIN_10_PRODUCTION",
+                  "GOBP_INTERLEUKIN_18_MEDIATED_SIGNALING_PATHWAY",
+                  "GOBP_INTERLEUKIN_27_MEDIATED_SIGNALING_PATHWAY"),
+      pathway_show = c("IL-1 production", "IL-6 production", "IL-10 production",
+                       "IL-18 mediated signaling", "IL-27 mediated signaling"),
+      theme = "Interleukin"
+    )
+  ) %>% 
+  bind_rows(
+    tibble(
+      pathway = c("GOBP_B_CELL_ACTIVATION", 
+                  "GOBP_T_CELL_DIFFERENTIATION",
+                  "GOBP_ISOTYPE_SWITCHING_TO_IGG_ISOTYPES",
+                  "GOBP_ANTIGEN_RECEPTOR_MEDIATED_SIGNALING_PATHWAY",
+                  "GOBP_HISTONE_METHYLATION",
+                  "GOBP_NCRNA_METABOLIC_PROCESS"),
+      pathway_show = c("Activation of B cell",
+                       "Differentation of T cell",
+                       "Isotype switching to IGG isotypes",
+                       "Antigen receptor mediated signaling",
+                       "Histone methylation",
+                       "ncRNA metabolic process"),
+      theme = "Negative regulation"
+    )
+  ) %>% 
+  mutate(theme = factor(theme, levels = c("Immune", "Type-I INF", "TNF", "Interleukin",
+                                          "Negative regulation")))
 
-result %>% 
-  dplyr::select(gs_name:contrast, pathway_enrichment) %>% unnest() %>% 
-  filter(pathway %in% pathway_plot) %>% 
-  mutate(`-log10 P-value` = -log10(padj)) %>% 
-  ggplot(aes(x = contrast, y = pathway, color = NES, size = `-log10 P-value`)) +
+g_bubble <- 
+  result %>% 
+  dplyr::select(gs_name:contrast, pathway_enrichment) %>% unnest(cols = "pathway_enrichment") %>% 
+  inner_join(pathway_plot) %>% 
+  mutate(`-log10 P-value` = -log10(padj),
+         pathway_show = forcats::fct_reorder(pathway_show, NES)) %>% 
+  ggplot(aes(x = contrast, y = pathway_show, color = NES, size = `-log10 P-value`)) +
   geom_point() +
-  facet_grid(~vacc) +
+  facet_grid(theme~vacc, scales = "free", space = "free") +
   # rotate x xaixs labels
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   scale_size_area(max_size = 8) + 
-  scale_color_gradient2(low="blue", mid = "white", high="red") 
+  scale_color_gradient2(low="blue", mid = "white", high="red") +
+  theme_classic() +
+  labs(y = NULL)
 
 ```
 
