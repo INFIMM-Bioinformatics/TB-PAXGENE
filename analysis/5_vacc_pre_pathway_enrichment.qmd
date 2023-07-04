@@ -7,7 +7,7 @@ editor: visual
 
 ## Load packages and data
 
-```{r}
+```{r packages}
 library(dplyr)
 library(tidybulk)
 library(fgsea)
@@ -83,23 +83,37 @@ result <-
     pathway_enrichment =
       map2(gs, DEG, ~ fgsea(pathways = .x, stats = .y) %>% 
              as_tibble() %>% 
-             filter(padj < 0.05))
+             filter(padj < 0.05) %>% 
+             arrange(-NES)) 
     )
 
 saveRDS(result, "../data/pathway_enrichment/GSEA_enrichment.rds")
+# result <- readRDS("../data/pathway_enrichment/GSEA_enrichment.rds")
+
+gobp_enrichment <- 
+  result %>% filter(gs_name == "GO:BP") %>% pull(pathway_enrichment)
+
+names(gobp_enrichment) <- 
+  result %>% filter(gs_name == "GO:BP") %>% 
+  mutate(name = paste(vacc, contrast, sep = "_")) %>% 
+  pull(name)
+
+openxlsx::write.xlsx(gobp_enrichment, file = "../data/pathway_enrichment/GSEA_enrichment_gobp.xlsx")
 ```
 
 * Reference gene set:
   * CP:REACTOME (Reactome Pathways): 1615 pathways
   * GO:BP (Gene Ontology Biological Process): 7658 pathways
   * GO:MF (Gene Ontology Molecular Function): 1738 pathways
+  
 * Pros and Cons:
   * GO:BP: comprehensive, but a lot of redundancy. For example, the top 10 pathways of H107_CAF09c immu1_vs_pre are:
   *  [1] "GOBP_DEFENSE_RESPONSE_TO_SYMBIONT"                        "GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS"               
  [3] "GOBP_TYPE_I_INTERFERON_PRODUCTION"                        "GOBP_RESPONSE_TO_VIRUS"                                  
  [5] "GOBP_REGULATION_OF_VIRAL_PROCESS"                         "GOBP_RESPONSE_TO_TYPE_I_INTERFERON"                      
  [7] "GOBP_POSITIVE_REGULATION_OF_TYPE_I_INTERFERON_PRODUCTION" "GOBP_NEGATIVE_REGULATION_OF_VIRAL_GENOME_REPLICATION"    
- [9] "GOBP_INTERFERON_BETA_PRODUCTION"                          "GOBP_CYTOKINE_MEDIATED_SIGNALING_PATHWAY"                
+ [9] "GOBP_INTERFERON_BETA_PRODUCTION"                          "GOBP_CYTOKINE_MEDIATED_SIGNALING_PATHWAY"
+ 
 * No of enriched pathways:
   * GO:BP
     * H107_CAF09c
