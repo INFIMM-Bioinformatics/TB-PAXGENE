@@ -20,8 +20,6 @@ library(stringr)
 se <- readRDS("../data/se_pcoding_scale_abundant_filtS.rds")
 ```
 
-
-
 ## Compare after- (timepoint 1, 2) and pre- immune within each vacc
 
 ```{r post-immu vs pre (paired)}
@@ -120,8 +118,8 @@ mapply(function(vacc, contrast){
 
 ```
 
-
 ## CAF04 immune 1 vs immune 2
+
 ```{r}
 fun_extract_de_up <- 
   function(vacc, contrast){
@@ -159,8 +157,8 @@ list(`CAF04 immu1 vs. pre` = CAF04_immu1,
   ggvenn()
 ```
 
-
 ## CAF09 vs CAF04CpG
+
 ```{r CAF09 vs CAF04CpG}
 
 immu1_caf09_caf04CpG <- 
@@ -209,7 +207,6 @@ enrichment[[1]] %>%
 
 ```
 
-
 ### Compare between vacc
 
 ```{r}
@@ -249,7 +246,6 @@ EnhancedVolcano(
 )
 
 ```
-
 
 ## Pathway
 
@@ -308,7 +304,6 @@ go <- OmnipathR::get_ontology_db(key = "goa_human", child_parents = F)
 
 ## Pathway - targeted
 
-
 ```{r}
 
 
@@ -341,7 +336,6 @@ gsva_clean %>%
   stat_compare_means()
 ```
 
-
 ```{r}
 gsva_clean %>% 
   ggboxplot(x = "timepoint", y = "score", fill = "vacc", 
@@ -350,6 +344,7 @@ gsva_clean %>%
 ```
 
 #### Heatmap
+
 ```{r}
 library(ComplexHeatmap)
 
@@ -392,5 +387,3 @@ draw(heatmap_body, annotation_legend_side = "top")
 ```{r}
 
 ```
-
-

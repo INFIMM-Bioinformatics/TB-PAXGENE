@@ -7,14 +7,14 @@ editor: visual
 
 ## Set up
 
-```{r}
+```{r load packages}
 library(dplyr)
 library(SummarizedExperiment)
-#setwd("analysis") # set working directory for compatibility across RStudio and VSCode
 library(GSVA)
 library(tidyr)
+library(stringr)
+library(purrr)
 ```
-
 
 ## Load gene expression data
 
@@ -22,22 +22,6 @@ library(tidyr)
 se <- readr::read_rds("../data/se_pcoding_scale_abundant_filtS.rds")
 head(se)
 ```
-
-## Load late response data
-
-```{r}
-late_response <- readxl::read_xlsx("../data/late_response_parameters.xlsx") %>% 
-  mutate(across(contains(c("ELISPOT", "BAL")), as.numeric))
-
-```
-
-```{r}
-late_response_meta <- 
-  se %>% colData() %>% as_tibble(rownames = "sample_name") %>% 
-  left_join(late_response, by = c("animal" = "NHP Name")) %>% 
-  group_by(animal)
-```
-
 
 ## Calulate GSVA scores
 
@@ -73,9 +57,6 @@ pathway_score <- gsva(
   count_matrix, gs_GOBP
 )
 
-# pathway_score_t <- pathway_score %>% t()
-
-
 pathway_score_selected <- 
   pathway_score[c("GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS",
     "GOBP_TYPE_I_INTERFERON_PRODUCTION",
@@ -94,53 +75,137 @@ pathway_score_selected <-
             by = c("animal", "sample_date")) %>% 
   select(!contains("GOBP"), contains("GOBP"))
 
+```
+
+```{r filling missing values}
+
+# calculate the baseline score (for filling the missing values)
 pathway_score_baseline <- 
   pathway_score_selected %>% 
     filter(timepoint == "pre") %>% 
     select(contains("GOBP"))
 pathway_score_baseline_mean <- colMeans(pathway_score_baseline)
 
+# add missing values with imputed
 pathway_score_selected_addmissing <- 
   pathway_score_selected %>% 
-  add_row(sample_name = "CGB097.2019.06.24",
-          animal = "CGB097",
-          sample_data = "2019.06.24")
+  bind_rows(
+    tibble(sample_name = c("CGB097.2019.06.24", "CGB065.2019.06.24"),
+       animal = c("CGB097", "CGB065"),
+       sample_date = c("2019.06.24", "2019.06.24"),
+       vacc = c("H107_CAF04_CpG", "H107_CAF09c"),
+       timepoint = c("pre", "pre")) %>% 
+      bind_cols(pathway_score_baseline_mean %>% as.data.frame() %>% t())
+  ) 
 
-  left_join(late_response_meta) %>% 
+pathway_score_selected_addmissing_baseline_corr <- # baseline correction
+  pathway_score_selected_addmissing %>% 
+  arrange(animal, sample_date) %>% 
   group_by(animal) %>% 
-  nest
-  
-  # select(contains(c("sample_name", "GOBP", "IFNg", "IL-17A", "BAL", "Group"))) %>% 
-  # select(-c("Group Order in protocol", "Group Order in manuscript"))
-  
+  nest() %>% 
+  mutate(data_baseline_corr = map(data, function(x){
+    GOBP_index <- x %>% colnames() %>% str_detect("GOBP") %>% which()
+    x_baseline_corr <- 
+      bind_rows(x[2, GOBP_index] - x[1, GOBP_index],
+                x[3, GOBP_index] - x[1, GOBP_index])
+    x_baseline_corr_meta <- 
+      x[2:3, -GOBP_index] %>% 
+      bind_cols(x_baseline_corr)
+    return(x_baseline_corr_meta)
+  })) %>% 
+  select(-data) %>% 
+  unnest(data_baseline_corr)
+```
+
+## Load late response data
+
+```{r}
+late_response <- 
+  readxl::read_xlsx("../data/late_response_parameters.xlsx") %>% 
+  mutate(across(contains(c("ELISPOT", "BAL")), as.numeric))
 ```
 
 ```{r}
-pathway_score_selected_group <- 
-  pathway_score_selected %>% 
-  group_by(Group) %>% 
-  tidyr::nest()
+late_response_meta <- 
+  pathway_score_selected_addmissing_baseline_corr %>% 
+  left_join(late_response, by = c("animal" = "NHP Name")) %>% 
+  ungroup()
 ```
-
 
 ## Calculate correlation
+
 ```{r}
-corr <- 
-  pathway_score_selected_group$data[[1]] %>% 
-  tibble::column_to_rownames("sample_name")
+# corr <- 
+#   pathway_score_selected_group$data[[1]] %>% 
+#   tibble::column_to_rownames("sample_name")
+# 
+# library(stringr)
+# colnames(corr) <- 
+#   corr %>% colnames() %>% 
+#   str_remove("GOBP_") %>% 
+#   str_replace("INTERLEUKIN_","IL")
+# 
+# library(corrplot)
+# 
+# 
+# pmat <- cor.mtest(corr)
+# corr %>% 
+#   cor(use = "complete.obs") %>% 
+#   corrplot::corrplot(p.mat = pmat$p, 
+#                      col=colorRampPalette(c("blue","white","red"))(200))
 
-library(stringr)
-colnames(corr) <- 
-  corr %>% colnames() %>% 
-  str_remove("GOBP_") %>% 
-  str_replace("INTERLEUKIN_","IL")
-
-library(corrplot)
-
-
-pmat <- cor.mtest(corr)
-corr %>% 
-  cor(use = "complete.obs") %>% 
-  corrplot::corrplot(p.mat = pmat$p, col=colorRampPalette(c("blue","white","red"))(200))
+corr_plot <- 
+  late_response_meta %>% 
+  group_by(vacc, timepoint) %>% 
+  nest() %>% 
+  mutate(
+    corr = map(data, function(x){
+    t <- x %>% dplyr::select(contains(c("GOBP", "ELISPOT", "BAL")))
+    colnames(t) <- colnames(t) %>% str_remove("GOBP_") %>% str_replace("INTERLEUKIN_", "IL")
+    m <- t %>% as.matrix()
+    
+    cor_coefficient <-  cor(m, use= "complete.obs", method = "spearman")
+    p_mat <- corrplot::cor.mtest(m, method = "spearman")
+    result <- list(p_mat = p_mat, cor_coefficient = cor_coefficient)
+    return(result)
+  }),
+    
+    plot = pmap(list(vacc, timepoint, corr), 
+                function(x1, x2, x3){
+                  fn <- paste0("../data/figure/", x1, "_", x2, ".pdf")
+                  pdf(width = 8, height = 8, file = fn)
+                  corrplot::corrplot(x3[["cor_coefficient"]],
+                                     title = paste(x1, x2), 
+                                     mar = c(1.5, 1.5, 1.5, 1.5),
+                                     col=colorRampPalette(c("blue","white","red"))(200),
+                                     p.mat = x3[["p_mat"]]$p
+                                     )
+                  dev.off()
+                }))
 ```
+
+```{r}
+cor_t <- 
+  late_response_meta %>% 
+  select(contains(c("GOBP", "ELISPOT", "BAL"))) %>% 
+  as.matrix()
+
+colnames(cor_t) <- colnames(cor_t) %>% str_remove("GOBP_") %>% str_replace("INTERLEUKIN_", "IL")
+
+cor_p <- cor_t %>% corrplot::cor.mtest(method = "spearman")
+
+cor_coeff <- cor_t %>% cor(use = "complete.obs", method = "spearman")
+
+pdf(width = 8, height = 8, file = "../data/figure/corr_pathway_late_response.pdf")
+corrplot::corrplot(cor_coeff, col=colorRampPalette(c("blue","white","red"))(200),
+                   mar = c(1.5, 1.5, 1.5, 1.5),
+                   p.mat = cor_p$p)
+dev.off()
+```
+
+
+
+
+
+
 
