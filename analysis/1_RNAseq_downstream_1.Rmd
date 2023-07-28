@@ -87,16 +87,135 @@ pca %>% pivot_sample() %>%
 se_pcoding_scale_abundant_filtS <- 
   se_pcoding_scale_abundant[, !colnames(se) %in% c("CGB097.2019.06.24", "CGB065.2019.06.24")]
 
-pca_filtS <- se_pcoding_scale_abundant_filtS %>% reduce_dimensions(method = "PCA")
+pca_filtS <- 
+  se_pcoding_scale_abundant_filtS %>% 
+  reduce_dimensions(method = "PCA", top = 1500)
 
 pca_filtS %>% pivot_sample() %>% 
   ggscatter(x = "PC1", y = "PC2", label = ".sample")
 
+library(ggplot2)
+
+pca_data <- attr(pca_filtS, "internals")$PCA
+variance_explained <- pca_data$sdev^2
+proportion_variance_explained <- variance_explained / sum(variance_explained)
+```
+
+
+## PCA
+
+### Visualization - 1 
+
+```{r}
+pca_filtS %>% pivot_sample() %>%
+  ggplot(aes(x = PC1, y = PC2, color = timepoint, shape = vacc)) +
+  geom_point() +
+  coord_equal(ratio = 1) +
+  theme_bw() +
+  xlab(paste0("PC1 (", sprintf("%.1f%%", proportion_variance_explained[1] * 100), ")")) +
+  ylab(paste0("PC2 (", sprintf("%.1f%%", proportion_variance_explained[2] * 100), ")")) +
+  theme(aspect.ratio=1) +
+  scale_shape_manual(values = c(1, 16, 17))
+  # scale_color_manual(values = c("black", "blue", "red"))
+```
+
+
+```{r}
+
+g_immune1 <- 
+  pca_filtS %>% pivot_sample() %>%
+  filter(timepoint != "immu2") %>% 
+  mutate(timepoint_vacc = paste(timepoint, vacc),
+         timepoint_vacc = case_when(timepoint == "pre" ~ "pre",
+                                    .default = timepoint_vacc)) %>% 
+  ggplot(aes(x = PC1, y = PC2, color = timepoint_vacc, fill = timepoint_vacc)) +
+  geom_point() +
+  stat_ellipse(type = "t") +
+  coord_equal(ratio = 1, xlim = c(-60, 70), ylim = c(-45, 55)) +
+  theme_bw() +
+  theme(aspect.ratio=1, legend.position = "none") +
+  scale_shape_manual(values = c(1, 16, 17)) +
+  scale_color_manual(values = c("red", "blue", "black")) +
+  xlab(paste0("PC1 (", sprintf("%.1f%%", proportion_variance_explained[1] * 100), ")")) +
+  ylab(paste0("PC2 (", sprintf("%.1f%%", proportion_variance_explained[2] * 100), ")")) 
+
+ggsave("../data/figure/pca_immune1.png", g_immune1, dpi = 500, 
+       width = 5, height = 5, scale = 0.8)
+
+```
+
+```{r}
+g_immune2 <- 
+pca_filtS %>% pivot_sample() %>%
+  filter(timepoint != "immu1") %>% 
+  mutate(timepoint_vacc = paste(timepoint, vacc),
+         timepoint_vacc = case_when(timepoint == "pre" ~ "pre",
+                                    .default = timepoint_vacc)) %>% 
+  ggplot(aes(x = PC1, y = PC2, color = timepoint_vacc, fill = timepoint_vacc)) +
+  geom_point() +
+  stat_ellipse(type = "t") +
+  coord_equal(ratio = 1, xlim = c(-60, 70), ylim = c(-45, 55)) +
+  theme_bw() +
+  theme(aspect.ratio=1, legend.position = "none") +
+  scale_shape_manual(values = c(1, 16, 17)) +
+  scale_color_manual(values = c("red", "blue", "black")) +
+  xlab(paste0("PC1 (", sprintf("%.1f%%", proportion_variance_explained[1] * 100), ")")) +
+  ylab(paste0("PC2 (", sprintf("%.1f%%", proportion_variance_explained[2] * 100), ")"))
+ggsave("../data/figure/pca_immune2.png", g_immune2, dpi = 500, 
+       width = 5, height = 5, scale = 0.8)
+```
+
+```{r}
+
+```
+
+
+
+```{r}
+pca_filtS %>% pivot_sample() %>%
+  filter(timepoint != "immu1") %>% 
+  mutate(timepoint_vacc = paste(timepoint, vacc),
+         timepoint_vacc = case_when(timepoint == "pre" ~ "pre",
+                                    .default = timepoint_vacc)) %>% 
+  ggplot(aes(x = PC1, y = PC2, color = timepoint, fill = timepoint_vacc)) +
+  geom_point(aes(shape = vacc)) +
+  # stat_ellipse(type = "norm", linetype =2) +
+  stat_ellipse(type = "t") +
+  coord_equal(ratio = 1) +
+  theme_bw() +
+  theme(aspect.ratio=1) +
+  scale_shape_manual(values = c(1, 16, 17))
+  # facet_grid(. ~ vacc )
+```
+
+
+```{r}
+pca_filtS %>% pivot_sample() %>%
+  ggplot(aes(x = PC1, y = PC2, color = timepoint,
+             shape = vacc)) +
+  geom_point() +
+  stat_ellipse() +
+  coord_equal(ratio = 1) +
+  theme_bw() +
+  theme(aspect.ratio=1) +
+  scale_shape_manual(values = c(1, 16, 17)) +
+  facet_grid(. ~ vacc )
+  
+```
+
+
+
+```{r}
 pca_filtS %>% pivot_sample() %>% 
   ggscatter(x = "PC1", y = "PC2", 
-            color = "timepoint", shape = "vacc",
-            ellipse = T, mean.point = T)
+            shape = "timepoint" , 
+            color = "vacc",
+            xlab = "PC1 (56.4%)",
+            ylab = "PC2 (11.6%)") +
+  coord_equal(ratio = 1)
 ```
+
+
 
 # DE analysis
 
