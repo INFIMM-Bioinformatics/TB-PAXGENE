@@ -273,7 +273,3 @@ ggboxplot(vacc_H107_CAF09c_sig %>% as_tibble(),
           add = "jitter")
 ```
 
-```{r}
-
-```
-
