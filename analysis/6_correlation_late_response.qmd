@@ -48,8 +48,7 @@ gs <-
   return(gs_list)
 }))
 
-gs_GOBP <- 
-  gs$gs_list[[2]]
+gs_GOBP <- gs$gs_list[[2]]
 ```
 
 ```{r}
@@ -121,7 +120,7 @@ pathway_score_selected_addmissing_baseline_corr <- # baseline correction
 
 ```{r}
 late_response <- 
-  readxl::read_xlsx("../data/late_response_parameters.xlsx") %>% 
+  readxl::read_xlsx("../data/Late_response_parameters.xlsx") %>% 
   mutate(across(contains(c("ELISPOT", "BAL")), as.numeric))
 ```
 
@@ -135,28 +134,10 @@ late_response_meta <-
 ## Calculate correlation
 
 ```{r}
-# corr <- 
-#   pathway_score_selected_group$data[[1]] %>% 
-#   tibble::column_to_rownames("sample_name")
-# 
-# library(stringr)
-# colnames(corr) <- 
-#   corr %>% colnames() %>% 
-#   str_remove("GOBP_") %>% 
-#   str_replace("INTERLEUKIN_","IL")
-# 
-# library(corrplot)
-# 
-# 
-# pmat <- cor.mtest(corr)
-# corr %>% 
-#   cor(use = "complete.obs") %>% 
-#   corrplot::corrplot(p.mat = pmat$p, 
-#                      col=colorRampPalette(c("blue","white","red"))(200))
 
 corr_plot <- 
   late_response_meta %>% 
-  group_by(vacc, timepoint) %>% 
+  group_by(timepoint) %>% 
   nest() %>% 
   mutate(
     corr = map(data, function(x){
@@ -170,12 +151,12 @@ corr_plot <-
     return(result)
   }),
     
-    plot = pmap(list(vacc, timepoint, corr), 
-                function(x1, x2, x3){
-                  fn <- paste0("../data/figure/", x1, "_", x2, ".pdf")
-                  pdf(width = 8, height = 8, file = fn)
+    plot = pmap(list(timepoint, corr), 
+                function(x2, x3){
+                  fn <- paste0("../data/figure/", x2, ".png")
+                  png(width = 8, height = 8, file = fn, res = )
                   corrplot::corrplot(x3[["cor_coefficient"]],
-                                     title = paste(x1, x2), 
+                                     title = paste(x2), 
                                      mar = c(1.5, 1.5, 1.5, 1.5),
                                      col=colorRampPalette(c("blue","white","red"))(200),
                                      p.mat = x3[["p_mat"]]$p
@@ -202,10 +183,3 @@ corrplot::corrplot(cor_coeff, col=colorRampPalette(c("blue","white","red"))(200)
                    p.mat = cor_p$p)
 dev.off()
 ```
-
-
-
-
-
-
-
