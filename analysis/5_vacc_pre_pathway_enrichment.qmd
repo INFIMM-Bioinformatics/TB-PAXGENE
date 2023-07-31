@@ -107,127 +107,67 @@ openxlsx::write.xlsx(gobp_enrichment,
             -   immu2_vs_pre: 95
 
 ```{r}
-pathway_plot <-
-tibble(pathway =   c(
-  "GOBP_CELLULAR_RESPONSE_TO_INTERFERON_GAMMA",
-  "GOBP_CYTOKINE_MEDIATED_SIGNALING_PATHWAY",
-  "GOBP_CYTOPLASMIC_PATTERN_RECOGNITION_RECEPTOR_SIGNALING_PATHWAY",
-  "GOBP_CYTOPLASMIC_PATTERN_RECOGNITION_RECEPTOR_SIGNALING_PATHWAY_IN_RESPONSE_TO_VIRUS",
-  "GOBP_INFLAMMATORY_RESPONSE",
-  "GOBP_INNATE_IMMUNE_RESPONSE",
-  "GOBP_INTERFERON_BETA_PRODUCTION",
-  "GOBP_MACROPHAGE_ACTIVATION",
-  "GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS",
-  "GOBP_PATTERN_RECOGNITION_RECEPTOR_SIGNALING_PATHWAY",
-  "GOBP_POSITIVE_REGULATION_OF_INTERFERON_BETA_PRODUCTION",
-  "GOBP_POSITIVE_REGULATION_OF_TYPE_I_INTERFERON_PRODUCTION",
-  "GOBP_REGULATION_OF_TYPE_I_INTERFERON_MEDIATED_SIGNALING_PATHWAY",
-  "GOBP_RESPONSE_TO_CYTOKINE",
-  "GOBP_RESPONSE_TO_INTERFERON_ALPHA",
-  "GOBP_RESPONSE_TO_INTERFERON_BETA",
-  "GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
-  "GOBP_RESPONSE_TO_VIRUS",
-  "GOBP_RIG_I_SIGNALING_PATHWAY",
-  "GOBP_TUMOR_NECROSIS_FACTOR_SUPERFAMILY_CYTOKINE_PRODUCTION",
-  "GOBP_TYPE_I_INTERFERON_PRODUCTION",
-  "GOBP_INTERLEUKIN_1_PRODUCTION",
-  "GOBP_INTERLEUKIN_6_PRODUCTION",
-  "GOBP_INTERLEUKIN_10_PRODUCTION",
-  "GOBP_INTERLEUKIN_18_MEDIATED_SIGNALING_PATHWAY",
-  "GOBP_INTERLEUKIN_27_MEDIATED_SIGNALING_PATHWAY"))
-
-
-pathway_plot <- 
+pathway_list <- 
   readxl::read_excel("../data/gene_set.xlsx") %>% 
-  dplyr::rename(pathway = GO_term)
+  dplyr::rename(pathway = GO_term) %>% 
+  mutate(pathway_display = factor(pathway_display, 
+                                  levels = rev(pathway_display)),
+         theme = factor(theme, levels = c("Innate response",
+                                          "Cytokine",
+                                          "Type I IFN"),
+                        labels = c("Innate~~response",
+                                   "Cytokine",
+                                   "Type~~I~~IFN")))
 
 
 ```
 
 ```{r Bubble plot}
-# pathway_plot <- 
-#   tibble(
-#   pathway = c("GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS",
-#               "GOBP_INFLAMMATORY_RESPONSE",
-#               "GOBP_TYPE_2_IMMUNE_RESPONSE",
-# 
-#               "GOBP_NIK_NF_KAPPAB_SIGNALING",
-#               "GOBP_INTERFERON_BETA_PRODUCTION"),
-#   pathway_show = c("Negative regulation of viral process", 
-#                    "Inflammatory response",
-#                    "Type 2 immune response", 
-#                    "NF-kB signaling pathway by NIK kinase",
-#                    "INF beta production"),
-#   theme = "Immune"
-# ) %>% 
-#   bind_rows(
-#     tibble(
-#       pathway = c("GOBP_TYPE_I_INTERFERON_PRODUCTION",
-#                   "GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
-#                   "GOBP_REGULATION_OF_TYPE_I_INTERFERON_MEDIATED_SIGNALING_PATHWAY"),
-#       pathway_show = c("Type-I INF production", 
-#                        "Response to Type-I INF",
-#                        "INF mediated signaling pathway"),
-#       theme = "Type-I INF"
-#     )
-#   ) %>% 
-#   bind_rows(
-#     tibble(
-#       pathway = c("GOBP_TUMOR_NECROSIS_FACTOR_SUPERFAMILY_CYTOKINE_PRODUCTION",
-#                   "GOBP_MACROPHAGE_ACTIVATION"),
-#       pathway_show = c("TNF superfamily cytokine production", "Activation of macrophage"),
-#       theme = "TNF"
-#     )
-#   ) %>% 
-#   bind_rows(
-#     tibble(
-#       pathway = c(
-#         "GOBP_CYTOKINE_PRODUCTION",
-#         "GOBP_INTERLEUKIN_1_PRODUCTION",
-#         "GOBP_INTERLEUKIN_6_PRODUCTION",
-#         "GOBP_INTERLEUKIN_10_PRODUCTION",
-#         "GOBP_INTERLEUKIN_18_MEDIATED_SIGNALING_PATHWAY",
-#         "GOBP_INTERLEUKIN_27_MEDIATED_SIGNALING_PATHWAY"),
-#       pathway_show = c(
-#        "Cytokine production", 
-# 
-#         "IL-1 production", "IL-6 production", "IL-10 production",
-#                        "IL-18 mediated signaling", "IL-27 mediated signaling"),
-#       theme = "Interleukin"
-#     )
-#   ) %>% 
-#   mutate(theme = factor(theme, levels = c("Immune", "Type-I INF", "TNF", "Interleukin",
-#                                           "Negative regulation")))
-
-
-
-
-
-
 t_bubble <- 
   result %>% 
   dplyr::select(gs_name:contrast, pathway_enrichment) %>% 
   unnest(cols = "pathway_enrichment") %>% 
-  inner_join(pathway_plot) %>% 
-  mutate(`-log10 P-value` = -log10(padj))
-         # pathway_show = forcats::fct_reorder(pathway_show, NES)) 
+  inner_join(pathway_list) %>% 
+  mutate(`-log10 P-value` = -log10(padj),
+         contrast = case_when(
+           contrast == "immu1_vs_pre" ~ "Day 1 after\n1st immu.",
+           contrast == "immu2_vs_pre" ~ "Day 1 after\n2nd immu."
+         ),
+         vacc = case_when(
+           vacc == "H107_CAF04_CpG" ~ "CAF10b",
+           vacc == "H107_CAF09c" ~ "CAF09hi"
+         ),
+         vacc = factor(vacc, levels = c("CAF10b", "CAF09hi"),
+                       labels = c("CAF10b", "CAF09^hi")))
+
+# label_facet <- 
+#   as_labeller(
+#     c(H107_CAF04_CpG = "CAF10b", H107_CAF09c = "CAF09^hi"), 
+#     default = label_parsed
+# )
+# 
+# label_facet_y <- 
+#   as_labeller(
+#     t_bubble$theme %>% unique
+#   )
+
 
 g_bubble <- 
   t_bubble %>% 
   ggplot(aes(x = contrast, y = pathway_display, color = NES, size = `-log10 P-value`)) +
   geom_point() +
-  facet_grid(. ~ vacc, scales = "free", space = "free") +
-  # rotate x xaixs labels
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_grid(theme ~ vacc, scales = "free", space = "free", labeller = label_parsed) +
   scale_size_area(max_size = 8) + 
   scale_color_gradient2(low="blue", mid = "white", high="red") +
   theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(y = NULL)
+
 
 ```
 
 ## Bubble plot
 
 ```{r}
-g_bubble
+ggsave("../data/figure/gsea_bubble.png", g_bubble, height = 6.2, width = 8, dpi = 600)
 ```
