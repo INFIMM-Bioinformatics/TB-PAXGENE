@@ -135,8 +135,8 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#data-availability" id="toc-data-availability" class="nav-link" data-scroll-target="#data-availability">Data availability</a></li>
   <li><a href="#bioinformatics-methods-and-resources" id="toc-bioinformatics-methods-and-resources" class="nav-link" data-scroll-target="#bioinformatics-methods-and-resources">Bioinformatics methods and resources</a>
   <ul class="collapse">
-  <li><a href="#refernce-genome-and-annotation" id="toc-refernce-genome-and-annotation" class="nav-link" data-scroll-target="#refernce-genome-and-annotation">Refernce genome and annotation</a></li>
   <li><a href="#github-repository" id="toc-github-repository" class="nav-link" data-scroll-target="#github-repository">GitHub repository</a></li>
+  <li><a href="#refernce-genome-and-annotation" id="toc-refernce-genome-and-annotation" class="nav-link" data-scroll-target="#refernce-genome-and-annotation">Refernce genome and annotation</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -164,12 +164,11 @@ ul.task-list li input[type="checkbox"] {
 <section id="motivation" class="level2">
 <h2 class="anchored" data-anchor-id="motivation">Motivation</h2>
 <p>This is a bioinformatics compendium for the publication: <a href="https://pubmed.ncbi.nlm.nih.gov/">Woodworth et al.&nbsp;A novel adjuvant formulation induces robust Th1/Th17 memory and mucosal recall responses in Non-Human Primates</a>.</p>
-<p>The authors strive to contribute to the scientific rigor, reproducibility, and transparency.</p>
-<p>Thus, we provide this compendium, in order to:</p>
-<ul>
-<li><p>Document a fully reproducible pipeline</p></li>
-<li><p>Facilitate the readers to freely access the data, statistical models, analysis</p></li>
-</ul>
+<p>The authors aim to enhance scientific rigor, reproducibility, and transparency. By providing this compendium, we intend to</p>
+<ol type="1">
+<li><p>document a fully reproducible pipeline</p></li>
+<li><p>facilitate the readers to freely access the data, statistical models, and bioinformatics analyses.</p></li>
+</ol>
 </section>
 <section id="data-availability" class="level2">
 <h2 class="anchored" data-anchor-id="data-availability">Data availability</h2>
@@ -179,66 +178,20 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="bioinformatics-methods-and-resources" class="level2">
 <h2 class="anchored" data-anchor-id="bioinformatics-methods-and-resources">Bioinformatics methods and resources</h2>
+<section id="github-repository" class="level3">
+<h3 class="anchored" data-anchor-id="github-repository">GitHub repository</h3>
+<ul>
+<li>GitHub repo: <a href="https://github.com/ssi-dk/INFIMM-TB-PAXGENE">ssi-dk/INFIMM-TB-PAXGENE</a></li>
+</ul>
+</section>
 <section id="refernce-genome-and-annotation" class="level3">
 <h3 class="anchored" data-anchor-id="refernce-genome-and-annotation">Refernce genome and annotation</h3>
 <ul>
 <li><p>Ensembl genome assembilies: Macaca_fascicularis_6.0 (GCA_011100615.1), <a href="https://ftp.ensembl.org/pub/release-109/fasta/macaca_fascicularis/dna/Macaca_fascicularis.Macaca_fascicularis_6.0.dna_rm.toplevel.fa.gz">fasta file</a></p></li>
 <li><p>Ensembl annotation release: 109, <a href="https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/012/559/485/GCF_012559485.2_MFA1912RKSv2/GCF_012559485.2_MFA1912RKSv2_genomic.gtf.gz">gtf file</a></p></li>
 </ul>
-</section>
-<section id="github-repository" class="level3">
-<h3 class="anchored" data-anchor-id="github-repository">GitHub repository</h3>
-<section id="structure" class="level4">
-<h4 class="anchored" data-anchor-id="structure">Structure</h4>
-<table class="table">
-<colgroup>
-<col style="width: 38%">
-<col style="width: 61%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>File</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>analysis\0_generate_nextflow_input.R</td>
-<td>generate input file for nextflow</td>
-</tr>
-<tr class="even">
-<td>analysis\1_RNA_SEQ_MAPPING.sh</td>
-<td>RNA-seq maaping by nf-core (STAR/Salmon)</td>
-</tr>
-<tr class="odd">
-<td>analysis\2_RNA_SEQ_MAPPING_SALMON.sh</td>
-<td>RNA-seq mapping by nf-core (only Salmon)</td>
-</tr>
-<tr class="even">
-<td>analysis\3_RNAseq_data_cleaning.Rmd</td>
-<td>RNA-seq: data cleaning and QC</td>
-</tr>
-<tr class="odd">
-<td>analysis\1_RNAseq_downstream_1.Rmd</td>
-<td>Figure 4a - PCA plots</td>
-</tr>
-<tr class="even">
-<td>analysis\5_vacc_pre_pathway_enrichment.qmd</td>
-<td>Figure 4b - Bubble plot for fGSEA pathway enrichment analysis</td>
-</tr>
-<tr class="odd">
-<td>analysis\6_correlation_late_response.qmd</td>
-<td>Figure 4c - correlate early blood signature with late response</td>
-</tr>
-<tr class="even">
-<td>renv.lock</td>
-<td>The version of R/Bioconductor packages was documented using <code>renv</code></td>
-</tr>
-</tbody>
-</table>
 
 
-</section>
 </section>
 </section>
 

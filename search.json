@@ -144,7 +144,7 @@
     "href": "index.html",
     "title": "The bioinformatics compendium",
     "section": "",
-    "text": "This is a bioinformatics compendium for the publication: Woodworth et al. A novel adjuvant formulation induces robust Th1/Th17 memory and mucosal recall responses in Non-Human Primates.\nThe authors strive to contribute to the scientific rigor, reproducibility, and transparency.\nThus, we provide this compendium, in order to:\n\nDocument a fully reproducible pipeline\nFacilitate the readers to freely access the data, statistical models, analysis"
+    "text": "This is a bioinformatics compendium for the publication: Woodworth et al. A novel adjuvant formulation induces robust Th1/Th17 memory and mucosal recall responses in Non-Human Primates.\nThe authors aim to enhance scientific rigor, reproducibility, and transparency. By providing this compendium, we intend to\n\ndocument a fully reproducible pipeline\nfacilitate the readers to freely access the data, statistical models, and bioinformatics analyses."
   },
   {
     "objectID": "index.html#data-availability",
@@ -158,6 +158,6 @@
     "href": "index.html#bioinformatics-methods-and-resources",
     "title": "The bioinformatics compendium",
     "section": "Bioinformatics methods and resources",
-    "text": "Bioinformatics methods and resources\n\nRefernce genome and annotation\n\nEnsembl genome assembilies: Macaca_fascicularis_6.0 (GCA_011100615.1), fasta file\nEnsembl annotation release: 109, gtf file\n\n\n\nGitHub repository\n\nStructure\n\n\n\n\n\n\n\nFile\nDescription\n\n\n\n\nanalysis\\0_generate_nextflow_input.R\ngenerate input file for nextflow\n\n\nanalysis\\1_RNA_SEQ_MAPPING.sh\nRNA-seq maaping by nf-core (STAR/Salmon)\n\n\nanalysis\\2_RNA_SEQ_MAPPING_SALMON.sh\nRNA-seq mapping by nf-core (only Salmon)\n\n\nanalysis\\3_RNAseq_data_cleaning.Rmd\nRNA-seq: data cleaning and QC\n\n\nanalysis\\1_RNAseq_downstream_1.Rmd\nFigure 4a - PCA plots\n\n\nanalysis\\5_vacc_pre_pathway_enrichment.qmd\nFigure 4b - Bubble plot for fGSEA pathway enrichment analysis\n\n\nanalysis\\6_correlation_late_response.qmd\nFigure 4c - correlate early blood signature with late response\n\n\nrenv.lock\nThe version of R/Bioconductor packages was documented using renv"
+    "text": "Bioinformatics methods and resources\n\nGitHub repository\n\nGitHub repo: ssi-dk/INFIMM-TB-PAXGENE\n\n\n\nRefernce genome and annotation\n\nEnsembl genome assembilies: Macaca_fascicularis_6.0 (GCA_011100615.1), fasta file\nEnsembl annotation release: 109, gtf file"
   }
 ]
