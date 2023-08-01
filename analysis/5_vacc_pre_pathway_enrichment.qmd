@@ -107,9 +107,25 @@ openxlsx::write.xlsx(gobp_enrichment,
             -   immu2_vs_pre: 95
 
 ```{r}
+<<<<<<< HEAD
 pathway_plot <- 
   readxl::read_excel("../data/gene_set.xlsx") %>% 
   dplyr::rename(pathway = GO_term)
+=======
+pathway_list <- 
+  readxl::read_excel("../data/gene_set.xlsx") %>% 
+  dplyr::rename(pathway = GO_term) %>% 
+  mutate(pathway_display = factor(pathway_display, 
+                                  levels = rev(pathway_display)),
+         theme = factor(theme, levels = c("Innate response",
+                                          "Cytokine",
+                                          "Type I IFN"),
+                        labels = c("Innate~~response",
+                                   "Cytokine",
+                                   "Type~~I~~IFN")))
+
+
+>>>>>>> 03bfb57f186bfba69f202d0523f3868e76c30792
 ```
 
 ```{r Bubble plot}
@@ -117,26 +133,47 @@ t_bubble <-
   result %>% 
   dplyr::select(gs_name:contrast, pathway_enrichment) %>% 
   unnest(cols = "pathway_enrichment") %>% 
-  inner_join(pathway_plot) %>% 
-  mutate(`-log10 P-value` = -log10(padj))
-         # pathway_show = forcats::fct_reorder(pathway_show, NES)) 
+  inner_join(pathway_list) %>% 
+  mutate(`-log10 P-value` = -log10(padj),
+         contrast = case_when(
+           contrast == "immu1_vs_pre" ~ "Day 1 after\n1st immu.",
+           contrast == "immu2_vs_pre" ~ "Day 1 after\n2nd immu."
+         ),
+         vacc = case_when(
+           vacc == "H107_CAF04_CpG" ~ "CAF10b",
+           vacc == "H107_CAF09c" ~ "CAF09hi"
+         ),
+         vacc = factor(vacc, levels = c("CAF10b", "CAF09hi"),
+                       labels = c("CAF10b", "CAF09^hi")))
+
+# label_facet <- 
+#   as_labeller(
+#     c(H107_CAF04_CpG = "CAF10b", H107_CAF09c = "CAF09^hi"), 
+#     default = label_parsed
+# )
+# 
+# label_facet_y <- 
+#   as_labeller(
+#     t_bubble$theme %>% unique
+#   )
+
 
 g_bubble <- 
   t_bubble %>% 
   ggplot(aes(x = contrast, y = pathway_display, color = NES, size = `-log10 P-value`)) +
   geom_point() +
-  facet_grid(. ~ vacc, scales = "free", space = "free") +
-  # rotate x xaixs labels
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_grid(theme ~ vacc, scales = "free", space = "free", labeller = label_parsed) +
   scale_size_area(max_size = 8) + 
   scale_color_gradient2(low="blue", mid = "white", high="red") +
   theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(y = NULL)
+
 
 ```
 
 ## Bubble plot
 
 ```{r}
-g_bubble
+ggsave("../data/figure/gsea_bubble.png", g_bubble, height = 6.2, width = 8, dpi = 600)
 ```
