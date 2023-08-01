@@ -383,7 +383,3 @@ heatmap_body <-
 
 draw(heatmap_body, annotation_legend_side = "top")
 ```
-
-```{r}
-
-```

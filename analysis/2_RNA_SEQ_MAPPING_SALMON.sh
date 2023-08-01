@@ -1,4 +1,9 @@
 #/bin/bash
+
+# This analysis is performed on Computerome 2.0 (The Danish National Life Science Supercomputing Center)
+# This analysis intends to test an alternative analysis pipeline, by pseudo mapping using Salmon sololy.
+# The analysis results were NOT used in the publication.
+
 cd /home/projects/cu_10181/people/tuhu/PAXgene
 module load jdk/18.0.2.1 nextflow/22.10.4 singularity/3.9.6 anaconda3/2023.03
 nextflow run nf-core/rnaseq \

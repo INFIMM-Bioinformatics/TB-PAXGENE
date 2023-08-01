@@ -93,9 +93,9 @@ openxlsx::write.xlsx(gobp_enrichment,
     -   GO:BP: comprehensive, but a lot of redundancy.
     -   For example, the top 10 pathways of H107_CAF09c immu1_vs_pre are:
     -   "GOBP_DEFENSE_RESPONSE_TO_SYMBIONT" "GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS"\
-        \[3\] "GOBP_TYPE_I_INTERFERON_PRODUCTION" "GOBP_RESPONSE_TO_VIRUS"\
-        \[5\] "GOBP_REGULATION_OF_VIRAL_PROCESS" "GOBP_RESPONSE_TO_TYPE_I_INTERFERON"\
-        \[7\] "GOBP_POSITIVE_REGULATION_OF_TYPE_I_INTERFERON_PRODUCTION" "GOBP_NEGATIVE_REGULATION_OF_VIRAL_GENOME_REPLICATION"\
+        \[3\] "GOBP_TYPE_I\_INTERFERON_PRODUCTION" "GOBP_RESPONSE_TO_VIRUS"\
+        \[5\] "GOBP_REGULATION_OF_VIRAL_PROCESS" "GOBP_RESPONSE_TO_TYPE_I\_INTERFERON"\
+        \[7\] "GOBP_POSITIVE_REGULATION_OF_TYPE_I\_INTERFERON_PRODUCTION" "GOBP_NEGATIVE_REGULATION_OF_VIRAL_GENOME_REPLICATION"\
         \[9\] "GOBP_INTERFERON_BETA_PRODUCTION" "GOBP_CYTOKINE_MEDIATED_SIGNALING_PATHWAY"
 -   No of enriched pathways:
     -   GO:BP
@@ -107,103 +107,12 @@ openxlsx::write.xlsx(gobp_enrichment,
             -   immu2_vs_pre: 95
 
 ```{r}
-pathway_plot <-
-tibble(pathway =   c(
-  "GOBP_CELLULAR_RESPONSE_TO_INTERFERON_GAMMA",
-  "GOBP_CYTOKINE_MEDIATED_SIGNALING_PATHWAY",
-  "GOBP_CYTOPLASMIC_PATTERN_RECOGNITION_RECEPTOR_SIGNALING_PATHWAY",
-  "GOBP_CYTOPLASMIC_PATTERN_RECOGNITION_RECEPTOR_SIGNALING_PATHWAY_IN_RESPONSE_TO_VIRUS",
-  "GOBP_INFLAMMATORY_RESPONSE",
-  "GOBP_INNATE_IMMUNE_RESPONSE",
-  "GOBP_INTERFERON_BETA_PRODUCTION",
-  "GOBP_MACROPHAGE_ACTIVATION",
-  "GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS",
-  "GOBP_PATTERN_RECOGNITION_RECEPTOR_SIGNALING_PATHWAY",
-  "GOBP_POSITIVE_REGULATION_OF_INTERFERON_BETA_PRODUCTION",
-  "GOBP_POSITIVE_REGULATION_OF_TYPE_I_INTERFERON_PRODUCTION",
-  "GOBP_REGULATION_OF_TYPE_I_INTERFERON_MEDIATED_SIGNALING_PATHWAY",
-  "GOBP_RESPONSE_TO_CYTOKINE",
-  "GOBP_RESPONSE_TO_INTERFERON_ALPHA",
-  "GOBP_RESPONSE_TO_INTERFERON_BETA",
-  "GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
-  "GOBP_RESPONSE_TO_VIRUS",
-  "GOBP_RIG_I_SIGNALING_PATHWAY",
-  "GOBP_TUMOR_NECROSIS_FACTOR_SUPERFAMILY_CYTOKINE_PRODUCTION",
-  "GOBP_TYPE_I_INTERFERON_PRODUCTION",
-  "GOBP_INTERLEUKIN_1_PRODUCTION",
-  "GOBP_INTERLEUKIN_6_PRODUCTION",
-  "GOBP_INTERLEUKIN_10_PRODUCTION",
-  "GOBP_INTERLEUKIN_18_MEDIATED_SIGNALING_PATHWAY",
-  "GOBP_INTERLEUKIN_27_MEDIATED_SIGNALING_PATHWAY"))
-
-
 pathway_plot <- 
   readxl::read_excel("../data/gene_set.xlsx") %>% 
   dplyr::rename(pathway = GO_term)
-
-
 ```
 
 ```{r Bubble plot}
-# pathway_plot <- 
-#   tibble(
-#   pathway = c("GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS",
-#               "GOBP_INFLAMMATORY_RESPONSE",
-#               "GOBP_TYPE_2_IMMUNE_RESPONSE",
-# 
-#               "GOBP_NIK_NF_KAPPAB_SIGNALING",
-#               "GOBP_INTERFERON_BETA_PRODUCTION"),
-#   pathway_show = c("Negative regulation of viral process", 
-#                    "Inflammatory response",
-#                    "Type 2 immune response", 
-#                    "NF-kB signaling pathway by NIK kinase",
-#                    "INF beta production"),
-#   theme = "Immune"
-# ) %>% 
-#   bind_rows(
-#     tibble(
-#       pathway = c("GOBP_TYPE_I_INTERFERON_PRODUCTION",
-#                   "GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
-#                   "GOBP_REGULATION_OF_TYPE_I_INTERFERON_MEDIATED_SIGNALING_PATHWAY"),
-#       pathway_show = c("Type-I INF production", 
-#                        "Response to Type-I INF",
-#                        "INF mediated signaling pathway"),
-#       theme = "Type-I INF"
-#     )
-#   ) %>% 
-#   bind_rows(
-#     tibble(
-#       pathway = c("GOBP_TUMOR_NECROSIS_FACTOR_SUPERFAMILY_CYTOKINE_PRODUCTION",
-#                   "GOBP_MACROPHAGE_ACTIVATION"),
-#       pathway_show = c("TNF superfamily cytokine production", "Activation of macrophage"),
-#       theme = "TNF"
-#     )
-#   ) %>% 
-#   bind_rows(
-#     tibble(
-#       pathway = c(
-#         "GOBP_CYTOKINE_PRODUCTION",
-#         "GOBP_INTERLEUKIN_1_PRODUCTION",
-#         "GOBP_INTERLEUKIN_6_PRODUCTION",
-#         "GOBP_INTERLEUKIN_10_PRODUCTION",
-#         "GOBP_INTERLEUKIN_18_MEDIATED_SIGNALING_PATHWAY",
-#         "GOBP_INTERLEUKIN_27_MEDIATED_SIGNALING_PATHWAY"),
-#       pathway_show = c(
-#        "Cytokine production", 
-# 
-#         "IL-1 production", "IL-6 production", "IL-10 production",
-#                        "IL-18 mediated signaling", "IL-27 mediated signaling"),
-#       theme = "Interleukin"
-#     )
-#   ) %>% 
-#   mutate(theme = factor(theme, levels = c("Immune", "Type-I INF", "TNF", "Interleukin",
-#                                           "Negative regulation")))
-
-
-
-
-
-
 t_bubble <- 
   result %>% 
   dplyr::select(gs_name:contrast, pathway_enrichment) %>% 

@@ -3,8 +3,8 @@ library(stringr)
 library(tibble)
 fastq <- list.files("data/fastq/", pattern = "*.fastq.gz$")
 
-
-
+# nextflow needs a samplesheet with the following columns:
+# sample, fastq_1, fastq_2, strandedness
 
 samplesheet <- 
   tibble(
