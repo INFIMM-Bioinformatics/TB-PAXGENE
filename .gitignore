@@ -2,6 +2,7 @@
 data/fastq
 data/nextflow_outputdir
 data/nextflow_wd
+~$*.xlsx
 .Rproj.user
 *.sh.e*
 *.sh.o*
@@ -9,3 +10,7 @@ omnipathr-log/
 .Rhistory
 
 /.quarto/
+
+analysis/_site
+analysis/*_cache
+analysis/*_files
