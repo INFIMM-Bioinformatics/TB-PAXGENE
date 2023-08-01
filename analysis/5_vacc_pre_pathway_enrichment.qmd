@@ -107,11 +107,6 @@ openxlsx::write.xlsx(gobp_enrichment,
             -   immu2_vs_pre: 95
 
 ```{r}
-<<<<<<< HEAD
-pathway_plot <- 
-  readxl::read_excel("../data/gene_set.xlsx") %>% 
-  dplyr::rename(pathway = GO_term)
-=======
 pathway_list <- 
   readxl::read_excel("../data/gene_set.xlsx") %>% 
   dplyr::rename(pathway = GO_term) %>% 
@@ -123,9 +118,6 @@ pathway_list <-
                         labels = c("Innate~~response",
                                    "Cytokine",
                                    "Type~~I~~IFN")))
-
-
->>>>>>> 03bfb57f186bfba69f202d0523f3868e76c30792
 ```
 
 ```{r Bubble plot}
