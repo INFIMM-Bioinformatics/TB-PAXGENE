@@ -7,3 +7,5 @@ data/nextflow_wd
 *.sh.o*
 omnipathr-log/
 .Rhistory
+
+/.quarto/

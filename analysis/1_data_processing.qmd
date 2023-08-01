@@ -1,0 +1,59 @@
+---
+title: "Mapping"
+author: "Tu Hu"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+bibliography: references.bib
+---
+
+## RNA-seq data mapping using nextflow
+
+### HISAT2/SAMLON (nf-core/rnaseq default option)
+
+We processed the raw RNA-seq data by nf-core rnaseq (version 3.12.0) [@ewels2020], a community-curated best practice workflow.
+
+In brief, the sequence read quality was checked by [fastqc](Babraham%20Bioinformatics%20-%20FastQC%20A%20Quality%20Control%20tool%20for%20High%20Throughput%20Sequence%20Data). Then, the adapter and low-quality reads were trimmed by ["Trim Galore!"](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/). The reads were mapped to Macaca fascicularis reference genome 6.0 by HISAT2 [@kim2019], and annotated by Emsembl 109. The mapped counts were counted by Salmon [@patro2017].
+
+This analysis was performed on [Computerome 2.0 (The Danish National Life Science Supercomputing Center)](https://www.computerome.dk/).
+
+```{bash}
+#/bin/bash
+cd /home/projects/cu_10181/people/tuhu/PAXgene
+module load jdk/18.0.2.1 nextflow/22.10.4 singularity/3.9.6 anaconda3/2023.03
+nextflow run nf-core/rnaseq \
+    -revision 3.12.0 \
+    -profile singularity \
+    -w data/nextflow_wd \
+    --fasta /home/projects/cu_10181/data/_reference/macaca_fascicularis/Macaca_fascicularis.Macaca_fascicularis_6.0.dna_rm.toplevel.fa.gz \
+    --gtf /home/projects/cu_10181/data/_reference/macaca_fascicularis/Macaca_fascicularis.Macaca_fascicularis_6.0.109.gtf.gz \
+    --input data/nextflow_input.csv \
+    --outdir data/nextflow_outputdir \
+    --max_cpus 40 \
+    --max_memory 170GB
+
+```
+
+### Salmon - pseudo mapping
+
+This analysis intends to test an alternative analysis pipeline, by pseudo mapping using Salmon sololy. The analysis results were NOT used in the publication.
+
+```{bash}
+#/bin/bash
+cd /home/projects/cu_10181/people/tuhu/PAXgene
+module load jdk/18.0.2.1 nextflow/22.10.4 singularity/3.9.6 anaconda3/2023.03
+nextflow run nf-core/rnaseq \
+    -revision 3.12.0 \
+    -profile singularity \
+    -w data/nextflow_wd_salmon \
+    --fasta /home/projects/cu_10181/data/_reference/macaca_fascicularis/Macaca_fascicularis.Macaca_fascicularis_6.0.dna_rm.toplevel.fa.gz \
+    --gtf /home/projects/cu_10181/data/_reference/macaca_fascicularis/Macaca_fascicularis.Macaca_fascicularis_6.0.109.gtf.gz \
+    --trimmer fastp \
+    --pseudo_aligner salmon \
+    --skip_alignment \
+    --input data/nextflow_input.csv \
+    --outdir data/nextflow_outputdir_salmon \
+    --max_cpus 40 \
+    --max_memory 170GB 
+```

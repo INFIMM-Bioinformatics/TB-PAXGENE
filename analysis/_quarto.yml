@@ -1,0 +1,33 @@
+project:
+  type: website
+
+website:
+  title: "Monkey PAXGene tube RNA-seq data analysis"
+  sidebar:
+    style: "docked"
+    search: False
+    contents:
+      - href: index.qmd
+        text: Home
+      - text: 1. Mapping
+        file: 1_data_processing.qmd
+      - text: 2. Data cleaning, QC, PCA analysis (Fig 4a)
+        file: 3_cleaning_qc_pca_analysis.qmd
+      - text: 3. Differential gene expression analysis
+        file: 4_DGE_analysis.qmd
+      - text: 4. Pathway enrichment analysis (Fig 4b)
+        file: 5_vacc_pre_pathway_enrichment.qmd
+      - text: 5. Correlation analysis (Fig 4c)
+        file: 6_correlation_late_response.qmd
+      - text: About
+        file: about.qmd
+      
+
+format:
+  html:
+    theme: sandstone
+    css: styles.css
+    toc: true
+
+
+

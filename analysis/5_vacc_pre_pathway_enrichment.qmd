@@ -7,7 +7,7 @@ editor: visual
 
 ## Load packages and data
 
-```{r packages}
+```{r packages, message=FALSE, warning=FALSE}
 library(dplyr)
 library(tidybulk)
 library(fgsea)
@@ -15,14 +15,24 @@ library(purrr)
 library(ggplot2)
 ```
 
-## DEG list
+### Differential expressed genes (DEG) list
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 DEG <- readRDS("../data/DElist/DGE_immu_vs_pre.rds")
 str(DEG, max.level = 2)
 ```
 
-## Gene set
+### Gene set
+
+We used the following gene sets:
+
+-   CP:REACTOME (Reactome Pathways): 1615 pathways
+
+-   GO:BP (Gene Ontology Biological Process): 7658 pathways
+
+-   GO:MF (Gene Ontology Molecular Function): 1738 pathways
+
+These gene sets are highly redundant. Because GO:BP is the most comprehensive one (7658 pathways). Thus, we only used GO:BP (Gene ontology biological process) in the publication. The authors are welcome to explore the results from `Reactome` or `Gene ontology molecular functions`.
 
 ```{r}
 gs <- 
@@ -40,9 +50,11 @@ gs <-
 }))
 ```
 
-## pathway enrichment by fgsea
+## Pathway enrichment by fgsea
 
-```{r}
+I used functional programming (`purrr::map`) below.
+
+```{r fgsea, cache=TRUE, message=FALSE, warning=FALSE}
 design <- 
   tidyr::expand_grid(
     gs_name  = gs$gs_name, 
@@ -85,18 +97,19 @@ openxlsx::write.xlsx(gobp_enrichment,
                      file = "../data/pathway_enrichment/GSEA_enrichment_gobp.xlsx")
 ```
 
--   Reference gene set:
-    -   CP:REACTOME (Reactome Pathways): 1615 pathways
-    -   GO:BP (Gene Ontology Biological Process): 7658 pathways
-    -   GO:MF (Gene Ontology Molecular Function): 1738 pathways
 -   Pros and Cons:
     -   GO:BP: comprehensive, but a lot of redundancy.
     -   For example, the top 10 pathways of H107_CAF09c immu1_vs_pre are:
-    -   "GOBP_DEFENSE_RESPONSE_TO_SYMBIONT" "GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS"\
-        \[3\] "GOBP_TYPE_I\_INTERFERON_PRODUCTION" "GOBP_RESPONSE_TO_VIRUS"\
-        \[5\] "GOBP_REGULATION_OF_VIRAL_PROCESS" "GOBP_RESPONSE_TO_TYPE_I\_INTERFERON"\
-        \[7\] "GOBP_POSITIVE_REGULATION_OF_TYPE_I\_INTERFERON_PRODUCTION" "GOBP_NEGATIVE_REGULATION_OF_VIRAL_GENOME_REPLICATION"\
-        \[9\] "GOBP_INTERFERON_BETA_PRODUCTION" "GOBP_CYTOKINE_MEDIATED_SIGNALING_PATHWAY"
+        -   "GOBP_DEFENSE_RESPONSE_TO_SYMBIONT"
+        -   "GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS"
+        -   "GOBP_TYPE_I\_INTERFERON_PRODUCTION"
+        -   "GOBP_RESPONSE_TO_VIRUS"
+        -   "GOBP_REGULATION_OF_VIRAL_PROCESS"
+        -   "GOBP_RESPONSE_TO_TYPE_I\_INTERFERON"
+        -   "GOBP_POSITIVE_REGULATION_OF_TYPE_I\_INTERFERON_PRODUCTION"
+        -   "GOBP_NEGATIVE_REGULATION_OF_VIRAL_GENOME_REPLICATION"
+        -   "GOBP_INTERFERON_BETA_PRODUCTION"
+        -   "GOBP_CYTOKINE_MEDIATED_SIGNALING_PATHWAY"
 -   No of enriched pathways:
     -   GO:BP
         -   H107_CAF09c
@@ -106,7 +119,7 @@ openxlsx::write.xlsx(gobp_enrichment,
             -   immu1_vs_pre: 68
             -   immu2_vs_pre: 95
 
-```{r}
+```{r selected pathways}
 pathway_list <- 
   readxl::read_excel("../data/gene_set.xlsx") %>% 
   dplyr::rename(pathway = GO_term) %>% 
@@ -138,18 +151,6 @@ t_bubble <-
          vacc = factor(vacc, levels = c("CAF10b", "CAF09hi"),
                        labels = c("CAF10b", "CAF09^hi")))
 
-# label_facet <- 
-#   as_labeller(
-#     c(H107_CAF04_CpG = "CAF10b", H107_CAF09c = "CAF09^hi"), 
-#     default = label_parsed
-# )
-# 
-# label_facet_y <- 
-#   as_labeller(
-#     t_bubble$theme %>% unique
-#   )
-
-
 g_bubble <- 
   t_bubble %>% 
   ggplot(aes(x = contrast, y = pathway_display, color = NES, size = `-log10 P-value`)) +
@@ -161,11 +162,10 @@ g_bubble <-
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(y = NULL)
 
-
+ggsave("../data/figure/gsea_bubble.png", g_bubble, 
+       height = 6.2, width = 8, dpi = 600)
 ```
 
 ## Bubble plot
 
-```{r}
-ggsave("../data/figure/gsea_bubble.png", g_bubble, height = 6.2, width = 8, dpi = 600)
-```
+![](images/gsea_bubble.png){fig-align="center"}
