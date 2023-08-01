@@ -6,14 +6,11 @@ title: "The bioinformatics compendium"
 
 This is a bioinformatics compendium for the publication: [Woodworth et al. A novel adjuvant formulation induces robust Th1/Th17 memory and mucosal recall responses in Non-Human Primates](https://pubmed.ncbi.nlm.nih.gov/).
 
-The authors strive to contribute to the scientific rigor, reproducibility, and 
-transparency. 
+The authors aim to enhance scientific rigor, reproducibility, and transparency. By providing this compendium, we intend to
 
-Thus, we provide this compendium, in order to:
+(1) document a fully reproducible pipeline
 
-- Document a fully reproducible pipeline
-
-- Facilitate the readers to freely access the data, statistical models, analysis
+(2) facilitate the  readers to freely access the data, statistical models, and bioinformatics analyses.
 
 ## Data availability
 
@@ -21,24 +18,13 @@ Thus, we provide this compendium, in order to:
 
 ## Bioinformatics methods and resources
 
+### GitHub repository
+
+- GitHub repo: [ssi-dk/INFIMM-TB-PAXGENE](https://github.com/ssi-dk/INFIMM-TB-PAXGENE)
 
 ### Refernce genome and annotation
 
-* Ensembl genome assembilies: Macaca_fascicularis_6.0 (GCA_011100615.1), [fasta file](https://ftp.ensembl.org/pub/release-109/fasta/macaca_fascicularis/dna/Macaca_fascicularis.Macaca_fascicularis_6.0.dna_rm.toplevel.fa.gz)
+- Ensembl genome assembilies: Macaca_fascicularis_6.0 (GCA_011100615.1), [fasta file](https://ftp.ensembl.org/pub/release-109/fasta/macaca_fascicularis/dna/Macaca_fascicularis.Macaca_fascicularis_6.0.dna_rm.toplevel.fa.gz)
 
-* Ensembl annotation release: 109, [gtf file](https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/012/559/485/GCF_012559485.2_MFA1912RKSv2/GCF_012559485.2_MFA1912RKSv2_genomic.gtf.gz)
+- Ensembl annotation release: 109, [gtf file](https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/012/559/485/GCF_012559485.2_MFA1912RKSv2/GCF_012559485.2_MFA1912RKSv2_genomic.gtf.gz)
 
-### GitHub repository
-
-#### Structure
-
-| File                                       | Description                                                        |
-| ------------------------------------------ | ------------------------------------------------------------------ |
-| analysis\0_generate_nextflow_input.R       | generate input file for nextflow                                   |
-| analysis\1_RNA_SEQ_MAPPING.sh              | RNA-seq maaping by nf-core (STAR/Salmon)                           |
-| analysis\2_RNA_SEQ_MAPPING_SALMON.sh       | RNA-seq mapping by nf-core (only Salmon)                           |
-| analysis\3_RNAseq_data_cleaning.Rmd        | RNA-seq: data cleaning and QC                                      |
-| analysis\1_RNAseq_downstream_1.Rmd         | Figure 4a - PCA plots                                              |
-| analysis\5_vacc_pre_pathway_enrichment.qmd | Figure 4b - Bubble plot for fGSEA pathway enrichment analysis      |
-| analysis\6_correlation_late_response.qmd   | Figure 4c - correlate early blood signature with late response     |
-| renv.lock                                  | The version of R/Bioconductor packages was documented using `renv` |
