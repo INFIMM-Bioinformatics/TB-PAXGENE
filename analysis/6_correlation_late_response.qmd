@@ -20,7 +20,6 @@ library(purrr)
 
 ```{r}
 se <- readr::read_rds("../data/se_pcoding_scale_abundant_filtS.rds")
-
 ```
 
 ## Calulate GSVA scores
@@ -71,13 +70,13 @@ pathway_list <-
                                    "Type~~I~~IFN")))
 
 
-
-
 pathway_score_selected <- 
-  pathway_score[pathway_list$pathway, ] %>% t() %>% 
+ pathway_score[pathway_list$pathway, ] %>% t() %>%
   as_tibble(rownames = "sample_name") %>% 
-  mutate(animal = sample_name %>% str_extract("[:alnum:]{6}"),
-         sample_date = sample_name %>% str_extract("[:digit:]{4}\\.[:digit:]{2}\\.[:digit:]{2}")) %>% 
+  mutate(animal = sample_name %>% 
+           str_extract("[:alnum:]{6}"),
+         sample_date = sample_name %>% 
+           str_extract("[:digit:]{4}\\.[:digit:]{2}\\.[:digit:]{2}")) %>% 
   left_join(colData(se) %>% as_tibble() %>% select(animal:timepoint),
             by = c("animal", "sample_date")) %>% 
   select(!contains("GOBP"), contains("GOBP"))
@@ -128,7 +127,7 @@ pathway_score_selected_addmissing_baseline_corr <- # baseline correction
 ```{r}
 late_response <- 
   readxl::read_xlsx("../data/Late_response_parameters.xlsx") %>% 
-  mutate(across(contains(c("ELISPOT", "BAL")), as.numeric))
+  mutate(across(contains(c("ELISPOT")), as.numeric))
 ```
 
 ```{r}
@@ -147,19 +146,25 @@ corr_plot <-
   nest() %>% 
   mutate(
     corr = map(data, function(x){
-    t <- x %>% dplyr::select(contains(c("GOBP", "ELISPOT", "BAL")))
-    colnames(t) <- colnames(t) %>% str_remove("GOBP_") %>% str_replace("INTERLEUKIN_", "IL")
-    m <- t %>% as.matrix()
-    
+    t <- x %>% dplyr::select(contains(c("GOBP", 
+                                        "ELISPOT")))
+                                        # "BAL"))) # Remove BAL
+    m <- t %>% as.matrix() 
     cor_coefficient <-  cor(m, use= "complete.obs", method = "spearman")
-    cor_coefficient <- cor_coefficient[1:18, 19:23]
+    
+    cor_coefficient <- 
+      cor_coefficient[colnames(m) %>% grep("GOBP", ., value = T), 
+                      colnames(m) %>% grep("ELISPOT_wk30", ., value = T)]
+    
     rownames(cor_coefficient) <- pathway_list$pathway_display
     colnames(cor_coefficient) <-
       colnames(cor_coefficient) %>%
       str_replace_all("_", " ")
     
     p_mat <- corrplot::cor.mtest(m, method = "spearman")
-    p_mat <- p_mat$p[1:18, 19:23]
+    p_mat <- p_mat$p
+    p_mat <- p_mat[colnames(m) %>% grep("GOBP", ., value = T), 
+                   colnames(m) %>% grep("ELISPOT_wk30", ., value = T)]
     
     result <- list(p_mat = p_mat, cor_coefficient = cor_coefficient)
     
@@ -168,19 +173,30 @@ corr_plot <-
     plot = pmap(list(timepoint, corr), 
                 function(x2, x3){
                   fn <- paste0("../data/figure/", x2, ".png")
-                  png(width = 12, height = 10, units = "in", file = fn, res = 600)
+                  png(width = 10, height = 12, units = "in", 
+                      file = fn, res = 600)
                   corrplot::corrplot(x3[["cor_coefficient"]],
-                                     title = paste(x2),
+                                     title = x2,
                                      mar = c(1, 1, 1, 1),
-                                     # col=colorRampPalette(c("blue","white","red"))(200),
+                  #                    # col=colorRampPalette(c("blue","white","red"))(200),
                                      col = corrplot::COL2("BrBG"),
                                      cl.align.text = "l",
+                                     sig.level = c(0.001, 0.01, 0.1),
+                                     pch.cex = 1.5,
+                                     insig = 'label_sig', cl.ratio = .3,
                                      # cl.pos = "b",
-                                     # cl.length = 15,
                                      p.mat = x3[["p_mat"]]
                                      )
                   dev.off()
                 }))
+```
+
+```{r}
+knitr::include_graphics("../data/figure/immu1.png")
+```
+
+```{r}
+knitr::include_graphics("../data/figure/immu2.png")
 ```
 
 ## Correlation plot
@@ -192,3 +208,130 @@ corr_plot <-
 ### The second immunization
 
 ![](images/immu2.png)
+
+## Fungal infection
+
+```{r}
+pathway_score_selected <- 
+#  pathway_score[pathway_list$pathway, ] %>% t() %>% 
+  pathway_score[gs_GOBP %>% names() %>% grep("FUNG", ., value = T), ] %>% t() %>% 
+  as_tibble(rownames = "sample_name") %>% 
+  mutate(animal = sample_name %>% 
+           str_extract("[:alnum:]{6}"),
+         sample_date = sample_name %>% 
+           str_extract("[:digit:]{4}\\.[:digit:]{2}\\.[:digit:]{2}")) %>% 
+  left_join(colData(se) %>% as_tibble() %>% select(animal:timepoint),
+            by = c("animal", "sample_date")) %>% 
+  select(!contains("GOBP"), contains("GOBP"))
+
+pathway_score_selected <- 
+#  pathway_score[pathway_list$pathway, ] %>% t() %>% 
+  pathway_score[gs_GOBP %>% names() %>% grep("FUNG", ., value = T), ] %>% t() %>% 
+  as_tibble(rownames = "sample_name") %>% 
+  mutate(animal = sample_name %>% 
+           str_extract("[:alnum:]{6}"),
+         sample_date = sample_name %>% 
+           str_extract("[:digit:]{4}\\.[:digit:]{2}\\.[:digit:]{2}")) %>% 
+  left_join(colData(se) %>% as_tibble() %>% select(animal:timepoint),
+            by = c("animal", "sample_date")) %>% 
+  select(!contains("GOBP"), contains("GOBP"))
+```
+
+```{r filling missing values}
+# calculate the baseline score (for filling the missing values)
+pathway_score_baseline <- 
+  pathway_score_selected %>% 
+    filter(timepoint == "pre") %>% 
+    select(contains("GOBP"))
+pathway_score_baseline_mean <- colMeans(pathway_score_baseline)
+
+# add missing values with imputed
+pathway_score_selected_addmissing <- 
+  pathway_score_selected %>% 
+  bind_rows(
+    tibble(sample_name = c("CGB097.2019.06.24", "CGB065.2019.06.24"),
+       animal = c("CGB097", "CGB065"),
+       sample_date = c("2019.06.24", "2019.06.24"),
+       vacc = c("H107_CAF04_CpG", "H107_CAF09c"),
+       timepoint = c("pre", "pre")) %>% 
+      bind_cols(pathway_score_baseline_mean %>% as.data.frame() %>% t())
+  ) 
+
+pathway_score_selected_addmissing_baseline_corr <- # baseline correction
+  pathway_score_selected_addmissing %>% 
+  arrange(animal, sample_date) %>% 
+  group_by(animal) %>% 
+  nest() %>% 
+  mutate(data_baseline_corr = map(data, function(x){
+    GOBP_index <- x %>% colnames() %>% str_detect("GOBP") %>% which()
+    x_baseline_corr <- 
+      bind_rows(x[2, GOBP_index] - x[1, GOBP_index],
+                x[3, GOBP_index] - x[1, GOBP_index])
+    x_baseline_corr_meta <- 
+      x[2:3, -GOBP_index] %>% 
+      bind_cols(x_baseline_corr)
+    return(x_baseline_corr_meta)
+  })) %>% 
+  select(-data) %>% 
+  unnest(data_baseline_corr)
+```
+
+```{r}
+late_response <- 
+  readxl::read_xlsx("../data/Late_response_parameters.xlsx") %>% 
+  mutate(across(contains(c("ELISPOT", "BAL")), as.numeric))
+
+late_response_meta <- 
+  pathway_score_selected_addmissing_baseline_corr %>% 
+  left_join(late_response, by = c("animal" = "NHP Name")) %>% 
+  ungroup()
+
+corr_plot <- 
+  late_response_meta %>% 
+  group_by(timepoint) %>% 
+  nest() %>% 
+  mutate(
+    corr = map(data, function(x){
+    t <- x %>% dplyr::select(contains(c("GOBP", 
+                                        "ELISPOT")))
+                                        # "BAL"))) # Remove BAL
+    colnames(t) <-
+      colnames(t) %>% str_remove("GOBP_") %>% str_replace("INTERLEUKIN_", "IL")
+    m <- t %>% as.matrix() 
+    
+    cor_coefficient <-  cor(m, use= "complete.obs", method = "spearman")
+    # cor_coefficient <- cor_coefficient[1:18, 19:22]
+    # rownames(cor_coefficient) <- pathway_list$pathway_display
+    # colnames(cor_coefficient) <-
+    #   colnames(cor_coefficient) %>%
+    #   str_replace_all("_", " ")
+    
+    p_mat <- corrplot::cor.mtest(m, method = "spearman")
+    p_mat <- p_mat$p
+    # p_mat <- p_mat$p[1:18, 19:22]
+    
+    result <- list(p_mat = p_mat, cor_coefficient = cor_coefficient)
+    
+    return(result)
+  }),
+    plot = pmap(list(timepoint, corr), 
+                function(x2, x3){
+                  fn <- paste0("../data/figure/", x2, ".png")
+                  png(width = 15, height = 15, units = "in", 
+                      file = fn, res = 600)
+                  corrplot::corrplot(x3[["cor_coefficient"]],
+                                     type = "lower",
+                                     title = x2,
+                                     mar = c(1, 1, 1, 1),
+                  #                    # col=colorRampPalette(c("blue","white","red"))(200),
+                                     col = corrplot::COL2("BrBG"),
+                                     cl.align.text = "l",
+                                     sig.level = c(0.001, 0.01, 0.1),
+                  #                    pch.cex = 1.2,
+                                     insig = 'label_sig',
+                                     cl.pos = "b",
+                                     p.mat = x3[["p_mat"]]
+                                     )
+                  dev.off()
+                }))
+```
