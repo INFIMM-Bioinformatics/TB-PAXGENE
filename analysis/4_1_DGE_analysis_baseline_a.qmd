@@ -1,0 +1,152 @@
+---
+title: "Imputing missing values at the baseline using global or group mean has nearly no difference in differential gene expression analysis"
+author: "Tu Hu"
+format: html
+editor: visual
+---
+
+## Load package and data
+
+```{r load library, message=FALSE, warning=FALSE}
+library(DESeq2)
+library(EnhancedVolcano)
+library(ggvenn)
+library(stringr)
+library(ggpubr)
+```
+
+```{r load data}
+se <- readRDS("../data/se_pcoding_scale_abundant_filtS.rds")
+```
+
+## Compare after- (timepoint 1, 2) and pre- immune within each vacc
+
+I used `lapply` below, thus the code is a bit abstract to read. In short, for each vaccine, I performed two DGE (differential gene expression) analysis to compare (1) `Immu1 vs. baseline` (Day 1 after the first immunization *vs.* baseline), and (2) `Immu2 vs. baseline` (Day 1 after the second immunization *vs.* baseline)
+
+```{r post-immu vs pre (paired), cache=TRUE, message=FALSE, warning=FALSE}
+vacc_l <- se$vacc %>% unique()
+DGE_immu_vs_pre_global_mean <-
+  lapply(vacc_l,
+         function(vacc){
+    se <-   
+      se[rowData(se)$.abundant == TRUE, 
+         (se$vacc == vacc) | (se$timepoint == "pre")]
+    
+    
+    rownames(se) <- rowData(se)$gene_name
+    
+    count <- se %>% assay(1) %>% 
+      as.matrix() %>% 
+      round()
+    
+    dds <- 
+      DESeqDataSetFromMatrix(
+        count, 
+        colData = colData(se),
+        design = ~ animal + timepoint
+        )
+  
+    dds <- DESeq(dds, parallel = F)
+  
+    immu1_vs_pre <- 
+      lfcShrink(dds, 
+                coef = "timepoint_immu1_vs_pre", 
+                type = "apeglm", 
+                parallel = F)
+    
+    immu2_vs_pre <- 
+      lfcShrink(dds, 
+                coef = "timepoint_immu2_vs_pre", 
+                type = "apeglm", 
+                parallel = F)
+    
+    DGE_immu_vs_pre <- 
+      list("immu1_vs_pre" = immu1_vs_pre, 
+           "immu2_vs_pre" = immu2_vs_pre)
+    
+    return(DGE_immu_vs_pre)
+  })
+
+names(DGE_immu_vs_pre_global_mean) <- vacc_l
+
+readr::write_rds(DGE_immu_vs_pre_global_mean, "../data/DElist/DGE_immu_vs_pre_global_mean.rds")
+```
+
+
+## Group mean results
+```{r}
+DGE_group_mean <- 
+  readr::read_rds("../data/DElist/DGE_immu_vs_pre.rds")
+```
+
+
+```{r}
+
+
+##############   TO DO   #############################
+library(ggvenn)
+
+# ggvenn(
+#   list(group_mean =  DGE_group_mean$H107_CAF09c$immu1_vs_pre %>% 
+#   as_tibble(rownames = "gene_name") %>% 
+#   filter(log2FoldChange > 1, padj < .05) %>% 
+#   pull(gene_name) ,
+#   global_mean = DGE_immu_vs_pre_global_mean$H107_CAF09c$immu1_vs_pre %>% 
+#   as_tibble(rownames = "gene_name") %>% 
+#   filter(log2FoldChange > 1, padj < .05) %>% 
+#   pull(gene_name))
+# )
+
+
+
+
+extract_deg_list <- 
+  function(stat_mtd, vacc, contrast, direction){
+    DEG <- 
+      if (stat_mtd == "group_mean") {
+      DGE_group_mean} else {DGE_immu_vs_pre_global_mean}
+    DEG <- DEG[[vacc]][[contrast]]
+    DEG_dir <- DEG %>% as_tibble(rownames = "gene_name") %>% filter(padj < .05)
+    
+    DEG_dir <- if(direction == "up"){
+      DEG_dir %>% filter(log2FoldChange > 1)
+    } else {
+      DEG_dir %>% filter(log2FoldChange < -1)
+    }
+    
+    DEG_dir_g <- DEG_dir %>% pull(gene_name)
+    return(DEG_dir_g)      
+  }
+
+venn_t <- 
+  tidyr::expand_grid(
+    stat_mtd = c("group_mean", "global_mean"),
+    vacc = vacc_l,
+    contrast = c("immu1_vs_pre", "immu2_vs_pre"),
+    direction = c("up", "down")
+  ) %>% 
+  mutate(g = purrr::pmap(list(stat_mtd, vacc, contrast, direction),
+                                    extract_deg_list
+                                    )
+         )
+venn_t_n <- 
+  venn_t %>% 
+  group_by(vacc, contrast, direction) %>% nest() %>% 
+  mutate(data = map(data, function(x){
+    names(x$g) <- x$stat_mtd
+    return(x$g)
+  }),
+  venn_t = paste(vacc, contrast, direction),
+  venn = map2(venn_t, data, 
+              function(x1, x2){
+                g <- ggvenn(x2) + ggtitle(x1)
+                return(g)
+              }))
+```
+
+```{r}
+venn_t_n$venn
+```
+
+
+

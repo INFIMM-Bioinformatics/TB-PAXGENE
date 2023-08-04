@@ -112,7 +112,7 @@ mapply(function(vacc, contrast){
 
 ```
 
-## CAF09hi: immu 1 vs. baseline &  immu 2 vs. baseline
+## CAF09hi: immu 1 vs. baseline & immu 2 vs. baseline
 
 ```{r}
 fun_extract_de_up <- 
@@ -143,7 +143,7 @@ list(`CAF09hi immu1 vs. pre` = CAF09_immu1,
 
 ```
 
-## CAF10b: immu 1 vs. baseline &  immu 2 vs. baseline
+## CAF10b: immu 1 vs. baseline & immu 2 vs. baseline
 
 ```{r}
 CAF04_immu1 <- fun_extract_de_up("H107_CAF04_CpG", "immu1_vs_pre")
