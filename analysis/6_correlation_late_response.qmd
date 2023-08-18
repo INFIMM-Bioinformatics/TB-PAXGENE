@@ -171,43 +171,34 @@ corr_plot <-
     return(result)
   }),
     plot = pmap(list(timepoint, corr), 
-                function(x2, x3){
-                  fn <- paste0("../data/figure/", x2, ".png")
-                  png(width = 10, height = 12, units = "in", 
-                      file = fn, res = 600)
+                function(x2, x3, color){
+                  fn <- paste0("../data/figure/", paste0("correlation_", x2), ".png")
+                  png(width = 10, height = 8, units = "in", 
+                      file = fn, res = 1000)
                   corrplot::corrplot(x3[["cor_coefficient"]],
                                      title = x2,
                                      mar = c(1, 1, 1, 1),
-                  #                    # col=colorRampPalette(c("blue","white","red"))(200),
-                                     col = corrplot::COL2("BrBG"),
+                                     col = corrplot::COL2("RdBu") %>% rev(),
                                      cl.align.text = "l",
                                      sig.level = c(0.001, 0.01, 0.1),
                                      pch.cex = 1.5,
                                      insig = 'label_sig', cl.ratio = .3,
-                                     # cl.pos = "b",
-                                     p.mat = x3[["p_mat"]]
+                                     p.mat = x3[["p_mat"]],
+                                     tl.col = "black"
                                      )
                   dev.off()
                 }))
-```
-
-```{r}
-knitr::include_graphics("../data/figure/immu1.png")
-```
-
-```{r}
-knitr::include_graphics("../data/figure/immu2.png")
 ```
 
 ## Correlation plot
 
 ### The first immunization
 
-![](images/immu1.png){fig-align="center"}
+![](images/correlation_immu1.png){fig-align="center"}
 
 ### The second immunization
 
-![](images/immu2.png)
+![](images/correlation_immu2.png)
 
 ## Fungal infection
 

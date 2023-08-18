@@ -177,8 +177,8 @@ g_immune1 <-
 
 g_immune1
 
-ggsave("../data/figure/pca_immune1.png", g_immune1, dpi = 500, 
-       width = 5, height = 5, scale = 0.8)
+ggsave("../data/figure/pca_immune1.png", g_immune1, dpi = 1000, 
+       width = 3, height = 3, scale = 0.8)
 
 ```
 
@@ -202,6 +202,6 @@ pca_filtS %>% pivot_sample() %>%
 
 g_immune2
 
-ggsave("../data/figure/pca_immune2.png", g_immune2, dpi = 500, 
-       width = 5, height = 5, scale = 0.8)
+ggsave("../data/figure/pca_immune2.png", g_immune2, dpi = 1000, 
+       width = 3, height = 3, scale = 0.8)
 ```

@@ -17,6 +17,8 @@ library(ggpubr)
 
 ```{r load data}
 se <- readRDS("../data/se_pcoding_scale_abundant_filtS.rds")
+
+colData(se)
 ```
 
 ## Compare after- (timepoint 1, 2) and pre- immune within each vacc
@@ -29,7 +31,7 @@ DGE_immu_vs_pre <-
   lapply(vacc_l,
          function(vacc){
     se <-   
-      se[rowData(se)$.abundant == TRUE,se$vacc == vacc]
+      se[rowData(se)$.abundant == TRUE, se$vacc == vacc]
     rownames(se) <- rowData(se)$gene_name
     
     count <- se %>% assay(1) %>% 
@@ -66,13 +68,14 @@ DGE_immu_vs_pre <-
 
 names(DGE_immu_vs_pre) <- vacc_l
 
-readr::write_rds(DGE_immu_vs_pre, "../data/DElist/DGE_immu_vs_pre.rds")
+# readr::write_rds(DGE_immu_vs_pre, "../data/DElist/DGE_immu_vs_pre.rds")
 ```
 
 ```{r volcano plot and DE list write, message=FALSE, warning=FALSE}
 gene_data_Type <- readRDS("../data/gene_data_Type.rds")
 if (!dir.exists("../data/DElist/")) {dir.create("../data/DElist")}
 if (!dir.exists("../data/figure")) {dir.create("../data/figure")}
+
 mapply(function(vacc, contrast){
   res <- DGE_immu_vs_pre[[vacc]][[contrast]] %>% 
     as_tibble(rownames = "gene_name") %>% 
@@ -195,8 +198,9 @@ EnhancedVolcano(
   res_vacc,
   rownames(res_vacc),
   x = "log2FoldChange",
-  y = "pvalue", 
+  y = "pvalue",
   title = "CAF09hi vs CAF10b",
-  subtitle = "After the first immunization"
+  subtitle = "Immu 1"
 )
+
 ```

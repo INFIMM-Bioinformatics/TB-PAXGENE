@@ -5,6 +5,8 @@ format: html
 editor: visual
 ---
 
+global mean was used to replace the missing values.
+
 ## Load package and data
 
 ```{r load library, message=FALSE, warning=FALSE}
@@ -13,6 +15,8 @@ library(EnhancedVolcano)
 library(ggvenn)
 library(stringr)
 library(ggpubr)
+library(tidyr)
+library(purrr)
 ```
 
 ```{r load data}
@@ -72,81 +76,117 @@ names(DGE_immu_vs_pre_global_mean) <- vacc_l
 readr::write_rds(DGE_immu_vs_pre_global_mean, "../data/DElist/DGE_immu_vs_pre_global_mean.rds")
 ```
 
-
 ## Group mean results
+
 ```{r}
 DGE_group_mean <- 
   readr::read_rds("../data/DElist/DGE_immu_vs_pre.rds")
 ```
 
+## Save DEG list
 
 ```{r}
+DEGlist <- 
+  DGE_immu_vs_pre_global_mean %>% 
+  unlist() %>% 
+  lapply(function(deglist){
+    deglist <- deglist %>% as_tibble(rownames = "gene_name")
+    deglist <- deglist %>% filter(padj < .05, abs(log2FoldChange) > 1) %>% 
+      arrange(-log2FoldChange)
+    deglist <- deglist %>% filter(!gene_name %>% str_detect("ENSMFAG"))
+  })
 
+names(DEGlist) <- 
+  names(DEGlist) %>% str_replace("H107_CAF09c", "CAF09hi") %>% 
+  str_replace("H107_CAF04_CpG" , "CAF10b")
 
-##############   TO DO   #############################
-library(ggvenn)
+openxlsx::write.xlsx(DEGlist, "../data/DElist/DGE_immu_vs_pre_global_mean.xlsx")
+```
 
-# ggvenn(
-#   list(group_mean =  DGE_group_mean$H107_CAF09c$immu1_vs_pre %>% 
-#   as_tibble(rownames = "gene_name") %>% 
-#   filter(log2FoldChange > 1, padj < .05) %>% 
-#   pull(gene_name) ,
-#   global_mean = DGE_immu_vs_pre_global_mean$H107_CAF09c$immu1_vs_pre %>% 
-#   as_tibble(rownames = "gene_name") %>% 
-#   filter(log2FoldChange > 1, padj < .05) %>% 
-#   pull(gene_name))
-# )
+## Venn diagram
 
+```{r}
+gene_data_Type <- readRDS("../data/gene_data_Type.rds")
 
-
-
-extract_deg_list <- 
-  function(stat_mtd, vacc, contrast, direction){
-    DEG <- 
-      if (stat_mtd == "group_mean") {
-      DGE_group_mean} else {DGE_immu_vs_pre_global_mean}
-    DEG <- DEG[[vacc]][[contrast]]
-    DEG_dir <- DEG %>% as_tibble(rownames = "gene_name") %>% filter(padj < .05)
+fun_extract_de <- 
+  function(vacc, contrast, direction){
     
-    DEG_dir <- if(direction == "up"){
-      DEG_dir %>% filter(log2FoldChange > 1)
-    } else {
-      DEG_dir %>% filter(log2FoldChange < -1)
-    }
+    res <- DGE_immu_vs_pre_global_mean[[vacc]][[contrast]] %>% 
+      as_tibble(rownames = "gene_name") %>% 
+      filter(!gene_name %>% str_detect("ENSMFAG"))
     
-    DEG_dir_g <- DEG_dir %>% pull(gene_name)
-    return(DEG_dir_g)      
-  }
+    res_filt <- 
+      if(direction == "up"){
+        res %>% filter(log2FoldChange > 1, padj < .05)
+      }
+      else if (direction == "down"){
+        res %>% filter(log2FoldChange < -1, padj < .05)
+      }
+    
+    g_name <- res_filt %>% pull(gene_name)
+    return(g_name)
+    } 
 
-venn_t <- 
-  tidyr::expand_grid(
-    stat_mtd = c("group_mean", "global_mean"),
+CAF09_immu1 <- fun_extract_de("H107_CAF09c", "immu1_vs_pre", "up")
+CAF09_immu2 <- fun_extract_de("H107_CAF09c", "immu2_vs_pre", "up")
+
+list(`CAF09hi immu1 vs. pre` = CAF09_immu1, 
+     `CAF09hi immu2 vs. pre` = CAF09_immu2) %>% 
+  ggvenn(text_size = 6) + 
+  geom_text(aes(x=-2, y = 0, label = "up"), size = 6)
+
+venn <- 
+  expand.grid(
     vacc = vacc_l,
-    contrast = c("immu1_vs_pre", "immu2_vs_pre"),
-    direction = c("up", "down")
-  ) %>% 
-  mutate(g = purrr::pmap(list(stat_mtd, vacc, contrast, direction),
-                                    extract_deg_list
-                                    )
-         )
-venn_t_n <- 
-  venn_t %>% 
-  group_by(vacc, contrast, direction) %>% nest() %>% 
-  mutate(data = map(data, function(x){
-    names(x$g) <- x$stat_mtd
-    return(x$g)
-  }),
-  venn_t = paste(vacc, contrast, direction),
-  venn = map2(venn_t, data, 
-              function(x1, x2){
-                g <- ggvenn(x2) + ggtitle(x1)
-                return(g)
-              }))
+    direction = c("up", "down")) %>% 
+  mutate(venn = map2(vacc, direction, function(vacc, direction){
+    immu1 <- fun_extract_de(vacc, "immu1_vs_pre", direction)
+    immu2 <- fun_extract_de(vacc, "immu2_vs_pre", direction)
+    vacc <- case_when(
+           vacc == "H107_CAF04_CpG" ~ "CAF10b",
+           vacc == "H107_CAF09c" ~ "CAF09hi")
+    venn <- list(immu1, immu2)
+    names(venn) <- paste(vacc, c("immu1 vs pre", "immu2 vs pre"))    
+    venn <- venn %>% ggvenn(text_size = 6) + geom_text(aes(x = -2, y = 0, label = direction), size = 6)
+    fn <- file.path("..", "data", "figure", paste0("venn_", vacc, "_", direction, ".png"))
+    ggsave(fn, venn, width = 6.5, height = 5, dpi = 1000)
+  }))
 ```
+
+## Between vaccine
 
 ```{r}
-venn_t_n$venn
+timepoint_l <- c("immu1", "immu2")
+volcano <- 
+  lapply(timepoint_l, 
+         function(timepoint){
+           se <- se[!rownames(se) %>% str_detect("ENSMFAG"), ]
+             
+           se_vacc_effect_timepoint <- 
+             se[rowData(se)$.abundant == TRUE, se$timepoint == timepoint]
+           rownames(se_vacc_effect_timepoint) <- rowData(se_vacc_effect_timepoint)$gene_name
+  
+           count <- se_vacc_effect_timepoint %>% assay(1) %>% as.matrix() %>% round()
+                
+           dds <- 
+             DESeqDataSetFromMatrix(
+               count, 
+               colData = colData(se_vacc_effect_timepoint),
+               design = ~ vacc)
+              
+            dds <- DESeq(dds, parallel = F)
+            
+            res_vacc <- 
+                  lfcShrink(dds, 
+                            coef = "vacc_H107_CAF09c_vs_H107_CAF04_CpG", 
+                            type = "apeglm", 
+                            parallel = F)
+            
+            volcano <- EnhancedVolcano(res_vacc, rownames(res_vacc), x = "log2FoldChange", y = "pvalue",
+                                       title = "CAF09hi vs CAF10b", subtitle = timepoint, FCcutoff = 1, pCutoff = .05)
+            ggsave(filename = paste0("../data/figure/volcano", "between_vacc", timepoint, ".png"), 
+                   volcano, width = 8, height = 10, dpi = 1000)
+  })
+
+volcano
 ```
-
-
-

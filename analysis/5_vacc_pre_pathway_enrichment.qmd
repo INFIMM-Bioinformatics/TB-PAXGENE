@@ -36,9 +36,11 @@ These gene sets are highly redundant. Because GO:BP is the most comprehensive on
 
 ```{r}
 gs <- 
-  tibble(gs_name = c("CP:REACTOME", 
-                     "GO:BP", 
-                     "GO:MF")) %>% 
+  tibble(gs_name = c(
+    #"CP:REACTOME", 
+    "GO:BP"
+    #"GO:MF"
+    )) %>% 
   mutate(gs_list = purrr::map(gs_name, function(subcat){
   gs_df <- msigdbr::msigdbr(species = "Homo sapiens", 
                             subcategory = subcat) %>% 
@@ -141,8 +143,10 @@ t_bubble <-
   inner_join(pathway_list) %>% 
   mutate(`-log10 P-value` = -log10(padj),
          contrast = case_when(
-           contrast == "immu1_vs_pre" ~ "Day 1 after\n1st immu.",
-           contrast == "immu2_vs_pre" ~ "Day 1 after\n2nd immu."
+           # contrast == "immu1_vs_pre" ~ "Day 1 after\n1st immu.",
+           # contrast == "immu2_vs_pre" ~ "Day 1 after\n2nd immu."
+           contrast == "immu1_vs_pre" ~ "immu. 1",
+           contrast == "immu2_vs_pre" ~ "immu. 2"
          ),
          vacc = case_when(
            vacc == "H107_CAF04_CpG" ~ "CAF10b",
@@ -162,8 +166,14 @@ g_bubble <-
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(y = NULL)
 
-ggsave("../data/figure/gsea_bubble.png", g_bubble, 
-       height = 6.2, width = 8, dpi = 600)
+ggsave("../data/figure/gsea_bubble_narrow.png", g_bubble, 
+       height = 6, width = 6, dpi = 1000)
+
+ggsave("../data/figure/gsea_bubble_medium.png", g_bubble, 
+       height = 6, width = 7, dpi = 1000)
+
+ggsave("../data/figure/gsea_bubble_wide.png", g_bubble, 
+       height = 6, width = 8, dpi = 1000)
 ```
 
 ## Bubble plot
