@@ -1,0 +1,73 @@
+---
+title: "RNAseq downstream analysis - data cleaning, QC, PCA analysis"
+author: "Tu Hu"
+date: "2023-06-19"
+output: html_document
+---
+
+```{r}
+suppressPackageStartupMessages(
+  {
+    library(dplyr)
+    library(ggplot2)
+    library(SummarizedExperiment)
+    library(tidybulk)
+    library(tidySummarizedExperiment)
+  }
+)
+se <- readr::read_rds("../data/se_pcoding_scale_abundant_filtS.rds")
+```
+
+
+
+```{r all monkey CLECs}
+se %>% rownames() %>% grep("CLEC", ., value = T)
+```
+
+
+```{r}
+CLEC_abundant <- 
+  se %>% rowData() %>% 
+  as_tibble(rownames = "gene_name") %>% 
+  filter(gene_name %>% stringr::str_detect("CLEC"), .abundant) %>% 
+  pull(gene_name)
+```
+
+```{r}
+se[CLEC_abundant, ] %>% 
+  mutate(vacc = stringr::str_remove(vacc, "H107_")) %>% 
+  ggplot(aes(x = vacc, log2_counts)) +
+  geom_boxplot() +
+  geom_point() +
+  facet_grid(timepoint ~ .feature, scales = "free") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, vjust = .7))
+```
+
+```{r}
+se["CLEC4D", ] %>% 
+  mutate(vacc = stringr::str_remove(vacc, "H107_")) %>% 
+  ggplot(aes(x = timepoint, log2_counts)) +
+  geom_boxplot() +
+  geom_point() +
+  facet_grid(vacc ~ .feature) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, vjust = .7))  
+```
+
+
+
+```{r}
+se[c("TAGAP", "EPHB2", "FCER1G"), ] %>% 
+  mutate(vacc = stringr::str_remove(vacc, "H107_")) %>% 
+  ggplot(aes(x = vacc, log2_counts)) +
+  geom_boxplot() +
+  geom_point() +
+  facet_grid(timepoint ~ .feature, scales = "free") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, 
+                                   vjust = .7))
+```
+
+
+

@@ -14,7 +14,7 @@ The authors aim to enhance scientific rigor, reproducibility, and transparency. 
 
 ## Data availability
 
-- [GSExxxx](): RNA-seq data for 30 samples has been deposited on GEO under the accession number xxxx (pending approval)
+- [GSE241235](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE241235): RNA-seq data for 30 PAXGene tube blood samples has been deposited on GEO under the accession number xxxx (pending approval)
 
 ## Bioinformatics methods and resources
 

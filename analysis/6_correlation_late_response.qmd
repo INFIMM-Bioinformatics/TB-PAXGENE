@@ -83,7 +83,7 @@ pathway_score_selected <-
 
 ```
 
-```{r filling missing values}
+```{r filling missing values - 1}
 # calculate the baseline score (for filling the missing values)
 pathway_score_baseline <- 
   pathway_score_selected %>% 
@@ -228,7 +228,7 @@ pathway_score_selected <-
   select(!contains("GOBP"), contains("GOBP"))
 ```
 
-```{r filling missing values}
+```{r filling missing values - 2}
 # calculate the baseline score (for filling the missing values)
 pathway_score_baseline <- 
   pathway_score_selected %>% 
