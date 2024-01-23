@@ -36,14 +36,14 @@ se_abundant_var100 <-
   se %>% 
   keep_variable(top = 100) 
 
-assay(se_abundant_var100, 4) <- 
-  se_abundant_var100 %>% assay(3) %>% log1p()
-
-assayNames(se_abundant_var100) <- 
-  c(assayNames(se_abundant_var100)[1:3], "log2counts")
+# assay(se_abundant_var100, 4) <- 
+#   se_abundant_var100 %>% assay(3) %>% log1p()
+# 
+# assayNames(se_abundant_var100) <- 
+#   c(assayNames(se_abundant_var100)[1:3], "log2counts")
 
 count <- 
-  se_abundant_var100 %>% assay(4) %>% t() %>% scale() %>% t()
+  se_abundant_var100 %>% assay(3) %>% t() %>% scale() %>% t()
 
 ```
 
@@ -52,7 +52,7 @@ count <-
 ```{r}
 annotation <- 
   colData(se) %>% as_tibble() %>% 
-  select(vacc, timepoint) %>% 
+  dplyr::select(vacc, timepoint) %>% 
   mutate(
     vacc = case_when(
       timepoint == "pre" ~ "baseline",
@@ -110,20 +110,63 @@ dev.off()
 ```
 
 ```{r}
+
+
+# colsum <- colSums(count)
+# o <- colsum %>% order()
+# names(o) <- names(colsum)
+
+library(seriation)
+o = seriate(dist(filtered_count), method = "GW")
+
+Heatmap(max(mat) - mat, name = "mat", 
+    row_order = get_order(o, 1), column_order = get_order(o, 2),
+    column_title = "seriation by BEA_TSP method")
+
+# Assuming count is a named vector or dataframe
+elements_to_exclude <- c("SLC47A1", "ORM1", "KIT", "NRN1", "CPED1", "LRRN1", "SCAMP4", "MRC2", "LIMA1")
+
+# Filtering elements not matching the exclusion list
+filtered_count <- count[!(rownames(count) %in% elements_to_exclude), ]
+
+
 heatmap_semisupervised <- 
-  Heatmap(count,
+  Heatmap(filtered_count,
           name = "gene expression",
-          column_dend_reorder = TRUE,
+          # column_dend_reorder = TRUE,
           show_column_names = FALSE,
           top_annotation = heatmap_annotation,
           height = unit(22, "cm"),
           width = unit(8, "cm"), 
           row_names_gp = gpar(fontsize = 7), 
-          column_split =  annotation$vacc)
-png("../data/figure/heatmap_semisupervised.png", height = 30, width = 17, units = "cm", res = 600)
+          # column_split =  factor(annotation$timepoint,
+          #                        levels = c("baseline", "immu1", "immu2")),
+          
+          cluster_column_slices = FALSE,
+          
+          show_column_dend = TRUE,
+          column_order = get_order(o, 2),
+          cluster_columns = as.dendrogram(o[[1]])
+          # clustering_distance_columns = "spearman"
+          # row_dend_reorder = TRUE,
+          )
+
+png("../data/figure/heatmap_semisupervised.png", height = 30, 
+    width = 17, units = "cm", res = 600)
 draw(heatmap_semisupervised, 
      heatmap_legend_side = "left",
      annotation_legend_side = "left", 
      merge_legend = FALSE)
 dev.off()
+```
+
+```{r output gene info}
+#| eval: False
+
+se_abundant_var100 %>% rowData() %>% 
+  as_tibble(rownames = "gene_name") %>% 
+  mutate(description = description %>% stringr::str_remove("\\[.{1,}")) %>% 
+  dplyr::select(-gene_biotype, -.abundant) %>% 
+  arrange(gene_name) %>% 
+  openxlsx::write.xlsx("../data/heatmap_gene_info.xlsx")
 ```

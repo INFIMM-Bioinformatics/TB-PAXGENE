@@ -42,7 +42,8 @@ gene_data <-
       ensembl <- useEnsembl(biomart = "genes", 
                             dataset = "mfascicularis_gene_ensembl")
       gene_data <- getBM(
-        attributes = c("ensembl_gene_id", "external_gene_name", "description", "gene_biotype"), 
+        attributes = c("ensembl_gene_id", "external_gene_name", 
+                       "description", "gene_biotype", "chromosome_name"), 
         mart = ensembl)
       
       gene_data <- 
@@ -67,7 +68,8 @@ count_gene_info <-
   filter(gene_biotype == "protein_coding", 
          !is.na(gene_name), 
          gene_name != "", 
-         !gene_name %>% str_detect("ENSMFAG"))
+         !gene_name %>% str_detect("ENSMFAG"),
+         chromosome_name %in% c(as.character(1:20), "X"))
 ```
 
 
