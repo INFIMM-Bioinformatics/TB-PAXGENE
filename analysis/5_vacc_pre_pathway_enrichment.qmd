@@ -36,16 +36,14 @@ These gene sets are highly redundant. Because GO:BP is the most comprehensive on
 
 ```{r}
 gs <- 
-  tibble(gs_name = c(
-    #"CP:REACTOME", 
-    "GO:BP"
-    #"GO:MF"
-    )) %>% 
+  tibble(
+    gs_name = c("GO:BP")) %>% 
   mutate(gs_list = purrr::map(gs_name, function(subcat){
   gs_df <- msigdbr::msigdbr(species = "Homo sapiens", 
                             subcategory = subcat) %>% 
     group_by(gs_name) %>% tidyr::nest() %>% 
-    mutate(gene_id = purrr::map(data, ~ .x %>% pull(gene_symbol))) %>% select(-data)
+    mutate(gene_id = purrr::map(data, ~ .x %>% pull(gene_symbol) %>% 
+                                  unique())) %>% select(-data)
   gs_list <- gs_df$gene_id
   names(gs_list) <- gs_df$gs_name
   return(gs_list)
@@ -104,11 +102,11 @@ openxlsx::write.xlsx(gobp_enrichment,
     -   For example, the top 10 pathways of H107_CAF09c immu1_vs_pre are:
         -   "GOBP_DEFENSE_RESPONSE_TO_SYMBIONT"
         -   "GOBP_NEGATIVE_REGULATION_OF_VIRAL_PROCESS"
-        -   "GOBP_TYPE_I\_INTERFERON_PRODUCTION"
+        -   "GOBP_TYPE_I_INTERFERON_PRODUCTION"
         -   "GOBP_RESPONSE_TO_VIRUS"
         -   "GOBP_REGULATION_OF_VIRAL_PROCESS"
-        -   "GOBP_RESPONSE_TO_TYPE_I\_INTERFERON"
-        -   "GOBP_POSITIVE_REGULATION_OF_TYPE_I\_INTERFERON_PRODUCTION"
+        -   "GOBP_RESPONSE_TO_TYPE_I_INTERFERON"
+        -   "GOBP_POSITIVE_REGULATION_OF_TYPE_I_INTERFERON_PRODUCTION"
         -   "GOBP_NEGATIVE_REGULATION_OF_VIRAL_GENOME_REPLICATION"
         -   "GOBP_INTERFERON_BETA_PRODUCTION"
         -   "GOBP_CYTOKINE_MEDIATED_SIGNALING_PATHWAY"
@@ -145,8 +143,8 @@ t_bubble <-
          contrast = case_when(
            # contrast == "immu1_vs_pre" ~ "Day 1 after\n1st immu.",
            # contrast == "immu2_vs_pre" ~ "Day 1 after\n2nd immu."
-           contrast == "immu1_vs_pre" ~ "immu. 1",
-           contrast == "immu2_vs_pre" ~ "immu. 2"
+           contrast == "immu1_vs_pre" ~ "immu.1",
+           contrast == "immu2_vs_pre" ~ "immu.2"
          ),
          vacc = case_when(
            vacc == "H107_CAF04_CpG" ~ "CAF10b",
@@ -157,14 +155,15 @@ t_bubble <-
 
 g_bubble <- 
   t_bubble %>% 
-  ggplot(aes(x = contrast, y = pathway_display, color = NES, size = `-log10 P-value`)) +
+  ggplot(aes(x = vacc, y = pathway_display, color = NES, size = `-log10 P-value`)) +
   geom_point() +
-  facet_grid(theme ~ vacc, scales = "free", space = "free", labeller = label_parsed) +
+  facet_grid(theme ~ contrast, scales = "free", space = "free", labeller = label_parsed) +
   scale_size_area(max_size = 8) + 
   scale_color_gradient2(low="blue", mid = "white", high="red") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(y = NULL)
+  scale_x_discrete(labels = function(x) parse(text = sprintf(x))) +
+  labs(y = NULL, x = NULL)
 
 ggsave("../data/figure/gsea_bubble_narrow.png", g_bubble, 
        height = 6, width = 6, dpi = 1000)

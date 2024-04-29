@@ -1,0 +1,34 @@
+---
+title: "CLEC4E expression"
+author: "Tu Hu"
+format: html
+editor: visual
+---
+
+## Load library and data
+
+```{r load library}
+suppressMessages({
+  library(dplyr)
+  library(SummarizedExperiment)
+  library(tidybulk)
+  library(tidySummarizedExperiment)
+  library(ggplot2)
+  })
+```
+
+```{r load data}
+se <- readRDS("../data/se_pcoding_scale_abundant_filtS.rds")
+```
+
+## CLEC4E
+
+```{r check CLEC4E}
+
+se %>% pivot_transcript()
+
+# abundant?
+se["CLEC4E", ] %>% 
+  ggplot(aes(x = timepoint, y = counts_scaled)) +
+  geom_point()
+```

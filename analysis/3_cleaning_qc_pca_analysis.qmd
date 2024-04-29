@@ -6,31 +6,72 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE
+  )
 ```
 
 ## Load package
 
 ```{r message=FALSE, warning=FALSE}
-library(dplyr)
-library(stringr)
-library(tidybulk)
-library(tidySummarizedExperiment)
-library(biomaRt)
-library(ggplot2)
-library(ggpubr)
+suppressPackageStartupMessages(
+  {
+    library(dplyr)
+    library(stringr)
+    library(tidybulk)
+    library(tidySummarizedExperiment)
+    library(biomaRt)
+    library(ggplot2)
+    library(ggpubr) 
+  }
+)
 ```
 
 ## Prepare the data
 
-### SummarizedExperiment
-
-The `.rds` file was generated from the nextflow pipeline, which is already in the `SummarizedExperiment` object.
-
-```{r summarizedexperiment data}
-se <- readRDS("../data/salmon.merged.gene_counts.rds")
-se
+```{r}
+count <- readr::read_tsv("../data/salmon.merged.gene_counts.tsv") %>% 
+  mutate(across(contains("C"), as.integer))
 ```
+
+```{r generate rowdata}
+gene_data <- 
+  runonce::save_run(
+    {
+      ensembl <- useEnsembl(biomart = "genes", 
+                            dataset = "mfascicularis_gene_ensembl")
+      gene_data <- getBM(
+        attributes = c("ensembl_gene_id", "external_gene_name", 
+                       "description", "gene_biotype", "chromosome_name"), 
+        mart = ensembl)
+      
+      gene_data <- 
+        count[, 1] %>% as_tibble() %>% 
+        left_join(gene_data, by = c("gene_id" = "ensembl_gene_id"))
+      
+      gene_data
+    }, "../data/gene_data.rds"
+  )
+```
+
+```{r interesting monkey gene}
+gene_data$gene_id %>% duplicated() %>% sum()
+gene_data$external_gene_name %>% duplicated() %>% sum()
+gene_data %>% filter(gene_biotype == "protein_coding") %>% pull(external_gene_name) %>% duplicated() %>% sum()
+gene_data %>% group_by(external_gene_name) %>% nest %>% mutate(n = purrr::map_int(data, nrow)) %>% arrange(-n)
+```
+
+```{r}
+count_gene_info <- 
+  count %>% left_join(gene_data) %>% 
+  filter(gene_biotype == "protein_coding", 
+         !is.na(gene_name), 
+         gene_name != "", 
+         !gene_name %>% str_detect("ENSMFAG"),
+         chromosome_name %in% c(as.character(1:20), "X"))
+```
+
 
 ### Sample meta data
 
@@ -38,7 +79,7 @@ This dataset is rather small, thus I manually created the metadata.
 
 ```{r generate metadata}
 metadata <-
-  tibble(sample_name = colnames(se)) %>% 
+  tibble(sample_name = colnames(count_gene_info) %>% grep("C", ., value = T)) %>% 
   mutate(animal = sample_name %>% str_extract("[:alnum:]{1,6}"),
          sample_date =  sample_name %>% str_extract("[:digit:]{4}\\.[:digit:]{2}\\.[:digit:]{2}"),
          vacc = case_when(
@@ -54,7 +95,6 @@ metadata <-
 col_data <- 
   metadata %>% tibble::column_to_rownames("sample_name") %>% 
   DataFrame()
-colData(se) <- col_data
 ```
 
 To note, **H107_CAF04_CpG** is equivalent to **CAF10b**. **H107_CAF09c** is equivalent to **CAF09^hi^** . I kept them consistent in the figures and publication. But in my code, I did not harmonize them, in afraid of side-effects.
@@ -63,42 +103,41 @@ To note, **H107_CAF04_CpG** is equivalent to **CAF10b**. **H107_CAF09c** is equi
 
 I generated gene annotation data (`rowData` of the `SummarizedExperiment` object) by querying ensembl. I used `runonce::save_run` to save the query results, because the connection to Ensembl is not always stable.
 
-```{r generate rowdata}
-gene_data_Type <- 
-  runonce::save_run(
-    {
-      ensembl <- useEnsembl(biomart = "genes", 
-                            dataset = "mfascicularis_gene_ensembl")
-      gene_data <- getBM(
-        attributes = c("ensembl_gene_id", "description", "gene_biotype"), 
-        mart = ensembl)
-      
-      gene_data_Type <- 
-        rowData(se) %>% as_tibble(rownames = "rowname") %>% 
-        left_join(gene_data, by = c("gene_id" = "ensembl_gene_id"))
-      
-      gene_data_Type
-    }, "../data/gene_data_Type.rds"
-  )
-rowData(se) <- gene_data_Type %>% tibble::column_to_rownames() %>% DataFrame()
-```
+
 
 I kept only protein coding genes for downstream analysis.
 
-```{r generate se_pcoding}
-se_pcoding <- se[rowData(se)$gene_biotype == "protein_coding", ] # protein coding gene
+```{r count data}
+count_matrix <- 
+  count_gene_info %>% tibble::column_to_rownames("gene_name") %>% 
+  dplyr::select(contains("2019")) %>% 
+  as.matrix()
+```
+
+
+```{r}
+row_data <- 
+  count_gene_info %>% dplyr::select(gene_id, gene_name, description, gene_biotype) %>% 
+  tibble::column_to_rownames("gene_name") %>% 
+  DataFrame()
+  
+se <- 
+  SummarizedExperiment(
+    assays = SimpleList(count = count_matrix), 
+    colData = col_data, 
+    rowData = row_data
+  )
+
+se
 ```
 
 # PCA (QC)
 
 ```{r detect abundant and scale counts, message=FALSE, warning=FALSE}
-se_pcoding_scale_abundant <- 
-  se_pcoding %>% 
+se_scale_abundant <- 
+  se %>% 
   identify_abundant() %>% 
   scale_abundance()
-
-rownames(se_pcoding_scale_abundant) <- 
-  rowData(se_pcoding_scale_abundant)$gene_name
 ```
 
 We used this ugly PCA plot to detect outliers.
@@ -107,24 +146,29 @@ Two outlier samples were detected. We also checked the QC report generated by mu
 
 ```{r pca, message=FALSE, warning=FALSE}
 pca <- 
-  se_pcoding_scale_abundant %>% reduce_dimensions(method = "PCA")
+  se_scale_abundant %>% reduce_dimensions(method = "PCA")
 
 pca %>% pivot_sample() %>% 
   ggscatter(x = "PC1", y = "PC2", label = ".sample")
 ```
 
 ```{r PCA after removing two samples, message=FALSE, warning=FALSE}
-se_pcoding_scale_abundant_filtS <- 
-  se_pcoding_scale_abundant[, !colnames(se) %in% c("CGB097.2019.06.24", "CGB065.2019.06.24")]
+se_scale_abundant_filtS <- 
+  se_scale_abundant[, !colnames(se) %in% c("CGB097.2019.06.24", "CGB065.2019.06.24")]
+
+assay(se_scale_abundant_filtS, 3) <- log1p(assay(se_scale_abundant_filtS, 2))
+
+assayNames(se_scale_abundant_filtS)[3] <- "log2_counts"
+
 ```
 
 ```{r save rds, eval=FALSE}
-saveRDS(se_pcoding_scale_abundant_filtS, "../data/se_pcoding_scale_abundant_filtS.rds")
+saveRDS(se_scale_abundant_filtS, "../data/se_pcoding_scale_abundant_filtS.rds")
 ```
 
 ```{r}
 pca_filtS <- 
-  se_pcoding_scale_abundant_filtS %>% 
+  se_scale_abundant_filtS %>% 
   reduce_dimensions(method = "PCA", top = 1500)
 
 pca_filtS %>% pivot_sample() %>% 
