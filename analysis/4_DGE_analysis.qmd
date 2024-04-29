@@ -32,7 +32,7 @@ DGE_immu_vs_pre <-
          function(vacc){
     se <-   
       se[rowData(se)$.abundant == TRUE, se$vacc == vacc]
-    rownames(se) <- rowData(se)$gene_name
+    # rownames(se) <- rowData(se)$gene_name
     
     count <- se %>% assay(1) %>% 
       as.matrix() %>% 
@@ -72,47 +72,9 @@ names(DGE_immu_vs_pre) <- vacc_l
 ```
 
 ```{r volcano plot and DE list write, message=FALSE, warning=FALSE}
-gene_data_Type <- readRDS("../data/gene_data_Type.rds")
+gene_data_Type <- readRDS("../data/gene_data.rds")
 if (!dir.exists("../data/DElist/")) {dir.create("../data/DElist")}
 if (!dir.exists("../data/figure")) {dir.create("../data/figure")}
-
-mapply(function(vacc, contrast){
-  res <- DGE_immu_vs_pre[[vacc]][[contrast]] %>% 
-    as_tibble(rownames = "gene_name") %>% 
-    filter(!gene_name %>% str_detect("ENSMFAG"))
-  
-  volcano <- 
-    EnhancedVolcano(
-      res,
-      lab = res$gene_name,
-      x = "log2FoldChange",
-      y = "pvalue",
-      title = vacc,
-      subtitle = contrast
-      )
-  
-  res_filt <- 
-    res %>% filter(abs(log2FoldChange) > 1,
-                   padj < .05) %>% 
-    arrange(-log2FoldChange) %>% 
-    left_join(gene_data_Type %>% 
-                dplyr::select(gene_name, description))
-    
-  res_filt %>% readr::write_csv(
-    paste0("../data/DElist/", 
-           paste0("DE_", vacc, "_",contrast, ".csv"))
-    )
-  
-  ggsave(paste0("../data/figure/", 
-                paste0("vocalno_", vacc, "_",contrast, ".jpg")),
-         volcano, width = 8, height = 8, dpi = 600)
-  
-  
-}, 
-  rep(vacc_l, 2), 
-  c(rep("immu1_vs_pre", 2), rep("immu2_vs_pre", 2))
-)
-
 ```
 
 ## CAF09hi: immu 1 vs. baseline & immu 2 vs. baseline
@@ -129,78 +91,59 @@ fun_extract_de_up <-
       res %>% filter(log2FoldChange > 1,
                      padj < .05) %>% 
       arrange(-log2FoldChange) %>% 
-      left_join(gene_data_Type %>% 
-                  dplyr::select(gene_name, description),
-                by = "gene_name")
+      left_join(gene_data_Type %>% dplyr::select(external_gene_name, description),
+                by = c("gene_name" = "external_gene_name"))
     
     g_name <- res_filt %>% pull(gene_name)
     return(g_name)
     } 
-
-CAF09_immu1 <- fun_extract_de_up("H107_CAF09c", "immu1_vs_pre")
-CAF09_immu2 <- fun_extract_de_up("H107_CAF09c", "immu2_vs_pre")
-
-list(`CAF09hi immu1 vs. pre` = CAF09_immu1, 
-     `CAF09hi immu2 vs. pre` = CAF09_immu2) %>% 
-  ggvenn()
-
 ```
 
-## CAF10b: immu 1 vs. baseline & immu 2 vs. baseline
+## Venn
 
 ```{r}
-CAF04_immu1 <- fun_extract_de_up("H107_CAF04_CpG", "immu1_vs_pre")
-CAF04_immu2 <- fun_extract_de_up("H107_CAF04_CpG", "immu2_vs_pre")
-list(`CAF10b immu1 vs. pre` = CAF04_immu1, 
-     `CAF10b immu2 vs. pre` = CAF04_immu2) %>% 
-  ggvenn()
-```
-
-## CAF09 vs CAF04CpG
-
-```{r CAF09 vs CAF04CpG}
-immu1_caf09_caf04CpG <- 
-  list(CAF09hi = CAF09_immu1,
-       CAF10b = CAF04_immu1) %>% 
-  ggvenn() +
-  ggtitle("Up-regulated genes - after first immunization")
-
-immu1_caf09_caf04CpG
-```
-
-## Compare between two vaccines
-
-I also performed a comparison between two vaccines. The results showed that not many genes were differentially expressed when make a head-to-head comparison between two vaccines. Thus, it is more appropriate to take the previous approach to compare each timepoint to the baseline.
-
-```{r message=FALSE, warning=FALSE}
-se_vacc_effect_first <- 
-  se[rowData(se)$.abundant == TRUE, se$timepoint == "immu1"]
-
-rownames(se_vacc_effect_first) <- rowData(se_vacc_effect_first)$gene_name
+fun_extract_de <- 
+  function(vacc, contrast, direction){
     
-count <- se_vacc_effect_first %>% assay(1) %>% as.matrix() %>% round()
+    res <- DGE_immu_vs_pre[[vacc]][[contrast]] %>% 
+      as_tibble(rownames = "gene_name") %>% 
+      filter(!gene_name %>% str_detect("ENSMFAG"))
     
-dds <- 
-  DESeqDataSetFromMatrix(
-    count, 
-    colData = colData(se_vacc_effect_first),
-    design = ~ vacc)
-  
-dds <- DESeq(dds, parallel = F)
+    res_filt <- 
+      if(direction == "up"){
+        res %>% filter(log2FoldChange > 1, padj < .05)
+      }
+      else if (direction == "down"){
+        res %>% filter(log2FoldChange < -1, padj < .05)
+      }
+    
+    g_name <- res_filt %>% pull(gene_name)
+    return(g_name)
+  } 
 
-res_vacc <- 
-      lfcShrink(dds, 
-                coef = "vacc_H107_CAF09c_vs_H107_CAF04_CpG", 
-                type = "apeglm", 
-                parallel = F)
-
-EnhancedVolcano(
-  res_vacc,
-  rownames(res_vacc),
-  x = "log2FoldChange",
-  y = "pvalue",
-  title = "CAF09hi vs CAF10b",
-  subtitle = "Immu 1"
-)
-
+venn <- 
+  expand.grid(
+    vacc = vacc_l,
+    direction = c("up", "down")) %>% 
+  mutate(venn = purrr::map2(vacc, direction, function(vacc, direction){
+    immu1 <- fun_extract_de(vacc, "immu1_vs_pre", direction)
+    immu2 <- fun_extract_de(vacc, "immu2_vs_pre", direction)
+    vacc <- case_when(
+           vacc == "H107_CAF04_CpG" ~ "CAF10b",
+           vacc == "H107_CAF09c" ~ "CAF09hi")
+    venn <- list(immu1, immu2)
+    names(venn) <- c("Imm.1 vs baseline", "Imm.2 vs baseline")    
+    venn <- 
+      venn %>%     
+      ggvenn(text_size = 6, fill_color = c("#B9B7B7", "#646161")) + 
+      geom_text(aes(x = 0, y = 1.5,
+                    label = ifelse(vacc == "CAF09hi", "CAF09^hi", "CAF10b")),
+                parse = TRUE,
+                size = 6) +
+      geom_text(aes(x = -2, y = 0, label = direction), 
+                size = 6)
+    fn <- file.path("..", "data", "figure", paste0("venn_", vacc, "_", direction, ".jpeg"))
+    
+    ggsave(fn, venn, width = 6, height = 4, dpi = 1000)
+  }))
 ```

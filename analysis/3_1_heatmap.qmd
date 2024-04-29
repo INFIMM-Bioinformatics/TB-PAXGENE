@@ -112,22 +112,19 @@ dev.off()
 ```{r}
 
 
-# colsum <- colSums(count)
-# o <- colsum %>% order()
-# names(o) <- names(colsum)
+colsum <- colSums(count)
+o <- colsum %>% order()
+names(o) <- names(colsum)
 
-library(seriation)
-o = seriate(dist(filtered_count), method = "GW")
-
-Heatmap(max(mat) - mat, name = "mat", 
-    row_order = get_order(o, 1), column_order = get_order(o, 2),
-    column_title = "seriation by BEA_TSP method")
 
 # Assuming count is a named vector or dataframe
-elements_to_exclude <- c("SLC47A1", "ORM1", "KIT", "NRN1", "CPED1", "LRRN1", "SCAMP4", "MRC2", "LIMA1")
+elements_to_exclude <- c("SLC47A1", "ORM1", "KIT", "NRN1", 
+                         "CPED1", "LRRN1", "SCAMP4", "MRC2",
+                         "LIMA1")
 
 # Filtering elements not matching the exclusion list
-filtered_count <- count[!(rownames(count) %in% elements_to_exclude), ]
+filtered_count <- 
+  count[!(rownames(count) %in% elements_to_exclude), ]
 
 
 heatmap_semisupervised <- 
@@ -139,16 +136,13 @@ heatmap_semisupervised <-
           height = unit(22, "cm"),
           width = unit(8, "cm"), 
           row_names_gp = gpar(fontsize = 7), 
-          # column_split =  factor(annotation$timepoint,
-          #                        levels = c("baseline", "immu1", "immu2")),
+          column_split =  factor(annotation$timepoint,
+                                 levels = c("baseline", "immu1", "immu2")),
           
           cluster_column_slices = FALSE,
           
           show_column_dend = TRUE,
-          column_order = get_order(o, 2),
-          cluster_columns = as.dendrogram(o[[1]])
-          # clustering_distance_columns = "spearman"
-          # row_dend_reorder = TRUE,
+          column_order = get_order(o),
           )
 
 png("../data/figure/heatmap_semisupervised.png", height = 30, 

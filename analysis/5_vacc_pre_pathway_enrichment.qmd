@@ -131,20 +131,32 @@ pathway_list <-
                         labels = c("Innate~~response",
                                    "Cytokine",
                                    "Type~~I~~IFN")))
+
+
+gs_df <- msigdbr::msigdbr(species = "Homo sapiens", 
+                          subcategory = "GO:BP")
+
+pathway_info <- 
+  pathway_list %>% left_join(
+    gs_df %>% filter(gs_name %in% pathway_list$pathway) %>% 
+      select(gs_name, gs_id, gs_exact_source) %>% unique, 
+    by = c("pathway" = "gs_name")
+  ) %>% 
+    select(pathway, gs_id, gs_exact_source)
+# openxlsx::write.xlsx(pathway_info,
+#                      "../data/pathway_info.xlsx")
 ```
 
 ```{r Bubble plot}
 t_bubble <- 
   result %>% 
   dplyr::select(gs_name:contrast, pathway_enrichment) %>% 
-  unnest(cols = "pathway_enrichment") %>% 
+  unnest() %>% 
   inner_join(pathway_list) %>% 
   mutate(`-log10 P-value` = -log10(padj),
          contrast = case_when(
-           # contrast == "immu1_vs_pre" ~ "Day 1 after\n1st immu.",
-           # contrast == "immu2_vs_pre" ~ "Day 1 after\n2nd immu."
-           contrast == "immu1_vs_pre" ~ "immu.1",
-           contrast == "immu2_vs_pre" ~ "immu.2"
+           contrast == "immu1_vs_pre" ~ "Imm.1",
+           contrast == "immu2_vs_pre" ~ "Imm.2"
          ),
          vacc = case_when(
            vacc == "H107_CAF04_CpG" ~ "CAF10b",
@@ -152,9 +164,12 @@ t_bubble <-
          ),
          vacc = factor(vacc, levels = c("CAF10b", "CAF09hi"),
                        labels = c("CAF10b", "CAF09^hi")))
+```
 
+```{r}
 g_bubble <- 
   t_bubble %>% 
+  filter(contrast == "Imm.1") %>% 
   ggplot(aes(x = vacc, y = pathway_display, color = NES, size = `-log10 P-value`)) +
   geom_point() +
   facet_grid(theme ~ contrast, scales = "free", space = "free", labeller = label_parsed) +
@@ -165,16 +180,12 @@ g_bubble <-
   scale_x_discrete(labels = function(x) parse(text = sprintf(x))) +
   labs(y = NULL, x = NULL)
 
-ggsave("../data/figure/gsea_bubble_narrow.png", g_bubble, 
+ggsave("../data/figure/gsea_bubble_width6.png", g_bubble, 
        height = 6, width = 6, dpi = 1000)
 
-ggsave("../data/figure/gsea_bubble_medium.png", g_bubble, 
-       height = 6, width = 7, dpi = 1000)
+ggsave("../data/figure/gsea_bubble_width5p5.png", g_bubble, 
+       height = 6, width = 5.5, dpi = 1000)
 
-ggsave("../data/figure/gsea_bubble_wide.png", g_bubble, 
-       height = 6, width = 8, dpi = 1000)
+ggsave("../data/figure/gsea_bubble_width5.png", g_bubble, 
+       height = 6, width = 5, dpi = 1000)
 ```
-
-## Bubble plot
-
-![](images/gsea_bubble.png){fig-align="center"}
