@@ -6,7 +6,7 @@ Monkey blood PAXGENE tubes bulk RNA-seq analysis
 
 ### Data availability
 
-RNA-seq data for 30 samples has been deposited on GEO under the accession number: [GSExxxx]()
+RNA-seq data for 30 samples has been deposited on GEO under the accession number: [GSE241235](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=gse241235)
 
 ### Refernce genome and annotation
 
