@@ -5,6 +5,29 @@
 
 Monkey blood PAXGENE tubes bulk RNA-seq analysis
 
+## Quick Links
+
+📖 **[Complete Setup Guide](SETUP.md)** - Detailed installation and configuration instructions  
+📚 **[Project Documentation](DOCUMENTATION.md)** - Comprehensive project overview and structure  
+🤝 **[Contributing Guidelines](CONTRIBUTING.md)** - Code standards and development workflow  
+🔬 **[GEO Dataset](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=gse241235)** - Access the published RNA-seq data
+
+## Quick Start
+
+```bash
+# Clone and setup
+git clone https://github.com/INFIMM-Bioinformatics/TB-PAXGENE.git
+cd TB-PAXGENE
+make setup
+
+# Validate data
+make validate
+
+# Check code quality
+make quality
+```
+
+
 ## Prerequisites
 
 - R version 4.3.2 or higher
