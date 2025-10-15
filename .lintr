@@ -1,0 +1,11 @@
+linters: linters_with_defaults(
+    line_length_linter(120),
+    object_name_linter = NULL,  # Allow snake_case and camelCase
+    cyclocomp_linter(complexity_limit = 15),
+    commented_code_linter = NULL  # Allow commented code in analysis scripts
+  )
+exclusions: list(
+    "renv",
+    "renv.lock"
+  )
+encoding: "UTF-8"

@@ -21,3 +21,15 @@ multiqc
 renv/.DS_Store
 analysis/.DS_Store
 .DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+.Rapp.history
+
+# Output directories
+output/
+
+# IDE files
+.vscode/
+.idea/
