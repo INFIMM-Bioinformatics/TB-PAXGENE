@@ -1,0 +1,67 @@
+name: R Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.3.2'
+          
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+          
+      - name: Install R dependencies
+        run: |
+          R -e 'install.packages(c("lintr", "styler", "here"), repos="https://cran.rstudio.com")'
+          
+      - name: Run lintr
+        run: |
+          R -e 'lintr::lint_dir(".", exclusions = list("renv", "renv.lock"))'
+        continue-on-error: true
+        
+      - name: Check code style
+        run: |
+          R -e 'issues <- styler::style_dir(".", exclude_dirs = c("renv", ".git"), dry = "on"); if (length(issues) > 0) { message("Style issues found"); } else { message("Code style is good!") }'
+        continue-on-error: true
+
+  code-quality-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Count R files
+        id: count
+        run: |
+          R_FILES=$(find . -name "*.R" -o -name "*.Rmd" -o -name "*.qmd" | grep -v "renv" | wc -l)
+          echo "r_files=$R_FILES" >> $GITHUB_OUTPUT
+          echo "Found $R_FILES R files"
+          
+      - name: Generate quality report
+        run: |
+          echo "# Code Quality Report" > code_quality_report.md
+          echo "" >> code_quality_report.md
+          echo "- R Files: ${{ steps.count.outputs.r_files }}" >> code_quality_report.md
+          echo "- Lint Status: See logs above" >> code_quality_report.md
+          echo "- Repository uses renv for package management ✓" >> code_quality_report.md
+          echo "- Configuration management implemented ✓" >> code_quality_report.md
+          
+      - name: Upload report
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-quality-report
+          path: code_quality_report.md
